@@ -108,6 +108,8 @@ bool App::dispatch(Action action)
         case Action::MoveBottom: _browser.moveToBottom(); break;
         case Action::PageDown: _browser.pageBy(1); break;
         case Action::PageUp: _browser.pageBy(-1); break;
+        case Action::HalfPageDown: _browser.halfPageBy(1); break;
+        case Action::HalfPageUp: _browser.halfPageBy(-1); break;
         case Action::Descend: _browser.descendCursor(); break;
         case Action::Ascend: _browser.ascendCursor(); break;
         case Action::SortBySize:

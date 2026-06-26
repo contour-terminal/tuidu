@@ -6,8 +6,8 @@ in C++23. An [ncdu](https://dev.yorhel.nl/ncdu) competitor.
 ## Features
 
 - **Live scanning** on a background thread — the tree fills in and bars animate while you browse.
-- **Vim motions**: `j`/`k` move, `g`/`G` jump to top/bottom, `l`/Enter descend, `h`/Backspace
-  ascend, `PageUp`/`PageDown` page.
+- **Vim motions**: `j`/`k` move, `g`/`G` jump to top/bottom, `Ctrl+D`/`Ctrl+U` half-page down/up,
+  `PageDown`/`PageUp` page, `l`/Enter descend, `h`/Backspace ascend.
 - **Data-driven columns**: size, proportional bar, %-of-parent, item count, date, name.
 - **Sort modes**: by size (↓/↑), name, item count, date — toggle with `s`/`n`/`C`/`M`.
 - **Real disk usage**: `lstat`-based block accounting (`st_blocks`), hardlink dedup, cross-device

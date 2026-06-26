@@ -56,6 +56,23 @@ TEST_CASE("Keymap: vim motion keys", "[keymap]")
     CHECK(map.lookup(charKey('q')) == Action::Quit);
 }
 
+TEST_CASE("Keymap: Ctrl-D / Ctrl-U half-page motions", "[keymap]")
+{
+    Keymap const map;
+    // A Ctrl+letter event arrives as the lowercase codepoint plus the Ctrl modifier.
+    CHECK(map.lookup(charKey('d', tui::Modifier::Ctrl)) == Action::HalfPageDown);
+    CHECK(map.lookup(charKey('u', tui::Modifier::Ctrl)) == Action::HalfPageUp);
+    // Without Ctrl they are not half-page motions.
+    CHECK(map.lookup(charKey('d')) == Action::None);
+    CHECK(map.lookup(charKey('u')) == Action::None);
+}
+
+TEST_CASE("Keymap: G jumps to bottom", "[keymap]")
+{
+    Keymap const map;
+    CHECK(map.lookup(charKey('g', tui::Modifier::Shift)) == Action::MoveBottom);
+}
+
 TEST_CASE("Keymap: arrow-key aliases mirror j/k", "[keymap]")
 {
     Keymap const map;

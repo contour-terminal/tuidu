@@ -29,7 +29,8 @@ struct KeyBindingDef
 
 /// The default vim-style bindings. Adding a binding is one row here; the same row
 /// feeds both dispatch and the `?` help overlay — no parallel lists to keep in sync.
-inline constexpr std::array<KeyBindingDef, 24> kDefaultKeymap { {
+/// The size is deduced (std::to_array) so adding a row needs no count update.
+inline constexpr auto kDefaultKeymap = std::to_array<KeyBindingDef>({
     { "j", Action::MoveDown, "Move down" },
     { "down", Action::MoveDown, "" },
     { "k", Action::MoveUp, "Move up" },
@@ -38,6 +39,8 @@ inline constexpr std::array<KeyBindingDef, 24> kDefaultKeymap { {
     { "shift+g", Action::MoveBottom, "Jump to bottom" },
     { "pageup", Action::PageUp, "Page up" },
     { "pagedown", Action::PageDown, "Page down" },
+    { "ctrl+u", Action::HalfPageUp, "Half page up" },
+    { "ctrl+d", Action::HalfPageDown, "Half page down" },
     { "l", Action::Descend, "Open directory" },
     { "enter", Action::Descend, "" },
     { "h", Action::Ascend, "Go to parent" },
@@ -54,7 +57,7 @@ inline constexpr std::array<KeyBindingDef, 24> kDefaultKeymap { {
     { "?", Action::Help, "Help" },
     { "q", Action::Quit, "Quit" },
     { "escape", Action::Quit, "" },
-} };
+});
 
 /// A help-overlay row: the displayed key and its description.
 struct HelpEntry

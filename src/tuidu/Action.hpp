@@ -21,9 +21,11 @@ enum class Action : std::uint8_t
     MoveDown,   ///< Move the cursor down one row.
     MoveTop,    ///< Jump to the first row.
     MoveBottom, ///< Jump to the last row.
-    PageUp,     ///< Scroll up one page.
-    PageDown,   ///< Scroll down one page.
-    Descend,    ///< Enter the selected directory.
+    PageUp,       ///< Scroll up one page.
+    PageDown,     ///< Scroll down one page.
+    HalfPageUp,   ///< Scroll up half a page (Ctrl+U).
+    HalfPageDown, ///< Scroll down half a page (Ctrl+D).
+    Descend,      ///< Enter the selected directory.
     Ascend,     ///< Go to the parent directory.
 
     // Sorting
