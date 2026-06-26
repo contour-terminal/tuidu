@@ -14,11 +14,13 @@ namespace tuidu
 
 namespace
 {
-    /// Builds the fullscreen screen configuration (set the one field we care about).
+    /// Builds the fullscreen screen configuration: a full-screen app on the alternate
+    /// screen buffer (so the user's scrollback is preserved and restored on exit).
     [[nodiscard]] tui::ScreenConfig makeScreenConfig()
     {
         tui::ScreenConfig config {};
         config.viewport = tui::Viewport::Fullscreen;
+        config.alternateScreen = true;
         return config;
     }
 } // namespace
@@ -37,6 +39,7 @@ App::App(tui::Terminal& terminal,
     _theme(_config.themeMode),
     _screen(terminal, makeScreenConfig()),
     _browser(_model, tui::TreeTableConfig { .showHeader = true, .barColumn = -1 }),
+    _help(_keymap),
     _runtime(eventSource)
 {
     _model.setSizeMode(_config.sizeMode);
@@ -68,6 +71,29 @@ void App::refreshStatus()
         _statusBar.setRightText(
             std::format("{}  {} items", formatSize(total, _config.units), _tree[root].itemCount));
     (void) sortLabel;
+}
+
+void App::setHelpVisible(bool visible)
+{
+    if (visible == _helpVisible)
+        return;
+    _helpVisible = visible;
+
+    if (visible)
+    {
+        // Center the overlay on screen and give it focus so it receives the next key.
+        auto const size = _help.preferredSize();
+        auto const x = std::max(0, (_screen.cols() - size.width) / 2);
+        auto const y = std::max(0, (_screen.rows() - size.height) / 2);
+        _help.setArea(tui::Rect { .x = x, .y = y, .width = size.width, .height = size.height });
+        _screen.showOverlay(_help, tui::Point { .x = x, .y = y });
+    }
+    else
+    {
+        _screen.hideOverlay(_help);
+    }
+    _screen.invalidate();
+    _dirty = true;
 }
 
 void App::applyProgress()
@@ -119,12 +145,12 @@ bool App::dispatch(Action action)
         case Action::ToggleApparentDisk:
             _model.setSizeMode(_model.sizeMode() == SizeMode::Apparent ? SizeMode::Disk : SizeMode::Apparent);
             break;
+        case Action::Help: setHelpVisible(!_helpVisible); break;
         case Action::None:
         case Action::ToggleHidden:
         case Action::SearchOpen:
         case Action::Rescan:
-        case Action::ShowInfo:
-        case Action::Help: break; // not yet wired in this MVP
+        case Action::ShowInfo: break; // not yet wired in this MVP
     }
     refreshStatus();
     _screen.invalidate();
@@ -171,6 +197,12 @@ endo::coro::Task<void> App::mainFlow()
 
         if (auto const* key = std::get_if<tui::KeyEvent>(&event))
         {
+            // While the help overlay is up, any key dismisses it and is otherwise swallowed.
+            if (_helpVisible)
+            {
+                setHelpVisible(false);
+                continue;
+            }
             if (auto const action = _keymap.lookup(*key); action != Action::None)
             {
                 if (!dispatch(action))

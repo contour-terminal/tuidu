@@ -19,6 +19,7 @@
 #include <platform/MessageQueue.hpp>
 #include <platform/Wakeup.hpp>
 #include <tuidu/DiskUsageModel.hpp>
+#include <tuidu/HelpOverlay.hpp>
 #include <tuidu/Keymap.hpp>
 #include <tuidu/ScanProgress.hpp>
 #include <tuidu/ThemeController.hpp>
@@ -68,6 +69,9 @@ class App
     /// @return true while a background scan is still running (for test synchronization).
     [[nodiscard]] bool scanInFlight() const noexcept { return _scanInFlight; }
 
+    /// @return true while the help overlay is shown (for inspection in tests).
+    [[nodiscard]] bool helpVisible() const noexcept { return _helpVisible; }
+
   private:
     /// The root coroutine flow: drain progress, draw, await activity, dispatch keys.
     [[nodiscard]] endo::coro::Task<void> mainFlow();
@@ -82,6 +86,10 @@ class App
     /// Updates the status bar text from the current tree/scan state.
     void refreshStatus();
 
+    /// Shows or hides the centered help overlay.
+    /// @param visible Whether the help overlay should be shown.
+    void setHelpVisible(bool visible);
+
     tui::Terminal& _terminal;                              ///< Terminal (injected).
     tui::runtime::EventSource& _eventSource;               ///< Wait source (injected).
     endo::platform::FileInfoProvider const& _provider;     ///< Directory-listing seam (injected).
@@ -95,16 +103,18 @@ class App
     tui::Screen _screen;               ///< The render surface.
     tui::TreeTableView _browser;       ///< The generic browser component.
     tui::StatusBar _statusBar;         ///< The status line.
+    HelpOverlay _help;                 ///< The help panel (shown on '?').
     tui::runtime::TuiRuntime _runtime; ///< The coroutine scheduler.
 
     std::mutex _treeMutex;           ///< Guards _tree between the scan worker and the UI.
     bool _scanInFlight = false;      ///< True while a scan is running.
+    bool _helpVisible = false;       ///< Whether the help overlay is shown.
     bool _dirty = true;              ///< Whether the screen needs a redraw (starts true).
     std::uint64_t _scannedItems = 0; ///< Latest scanned-item total (status).
     std::int64_t _scannedBytes = 0;  ///< Latest scanned-byte total (status).
 
     static constexpr int kScanPollMs = 60;   ///< Poll interval while a scan streams progress.
-    static constexpr int kIdlePollMs = 1000;  ///< Idle poll interval (input/scan wakeups preempt it).
+    static constexpr int kIdlePollMs = 1000; ///< Idle poll interval (input/scan wakeups preempt it).
 };
 
 } // namespace tuidu

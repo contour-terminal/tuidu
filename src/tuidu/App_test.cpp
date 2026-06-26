@@ -144,6 +144,76 @@ TEST_CASE("App: 'j' then 'q' navigates without crashing", "[app]")
     CHECK(app.tree()[app.tree().root()].aggSize == 300);
 }
 
+TEST_CASE("App: '?' opens the help overlay; any key closes it", "[app]")
+{
+    MockFileInfoProvider provider;
+    provider.setEntries(".", { file("a.txt", 100) });
+
+    // After scanning: press '?', then a key to dismiss, then 'q'. The source observes
+    // app.helpVisible() between keys to assert the overlay toggled.
+    bool sawHelpOpen = false;
+    bool sawHelpClosedAgain = false;
+    auto* appPtr = static_cast<App*>(nullptr);
+
+    // A source wired (after construction) to the app, checking help state between keys.
+    struct HelpProbeSource: tui::runtime::EventSource
+    {
+        std::function<bool()> scanInFlight;
+        std::function<bool()> helpVisible;
+        bool* sawOpen = nullptr;
+        bool* sawClosed = nullptr;
+        int step = 0;
+
+        tui::runtime::WaitOutcome wait(int) override
+        {
+            if (scanInFlight && scanInFlight())
+            {
+                std::this_thread::yield();
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                return tui::runtime::WaitOutcome { .agentReady = true };
+            }
+            switch (step++)
+            {
+                case 0: // open help
+                    return tui::runtime::WaitOutcome { .events = { keyChar(U'?') } };
+                case 1: // help should be open now; send a key to dismiss
+                    if (helpVisible && helpVisible())
+                        *sawOpen = true;
+                    return tui::runtime::WaitOutcome { .events = { keyChar(U'j') } };
+                case 2: // help should be closed now; quit
+                    if (helpVisible && !helpVisible())
+                        *sawClosed = true;
+                    return tui::runtime::WaitOutcome { .events = { keyChar(U'q') } };
+                default: return tui::runtime::WaitOutcome { .interrupted = true };
+            }
+        }
+    } source;
+
+    source.sawOpen = &sawHelpOpen;
+    source.sawClosed = &sawHelpClosedAgain;
+
+    auto mockOut = std::make_unique<tui::MockTerminalOutput>(80, 24);
+    tui::Terminal terminal { std::move(mockOut) };
+    MessageQueue<ScanProgress> progress;
+
+    AppConfig config;
+    config.themeMode = ThemeMode::Dark;
+    App app { terminal, source, provider, progress, config };
+    appPtr = &app;
+    source.scanInFlight = [&] {
+        return app.scanInFlight();
+    };
+    source.helpVisible = [&] {
+        return app.helpVisible();
+    };
+
+    CHECK(app.run() == 0);
+    CHECK(sawHelpOpen);        // '?' opened the overlay
+    CHECK(sawHelpClosedAgain); // a subsequent key closed it
+    CHECK_FALSE(app.helpVisible());
+    (void) appPtr;
+}
+
 TEST_CASE("App: descend into a directory then quit", "[app]")
 {
     MockFileInfoProvider provider;

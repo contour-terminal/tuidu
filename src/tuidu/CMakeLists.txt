@@ -17,9 +17,10 @@ add_library(tuidu-core STATIC
     # Scanning
     Scanner.cpp
     ScanWorker.cpp
-    # UI: model adapter, theming, app
+    # UI: model adapter, theming, help, app
     DiskUsageModel.cpp
     ThemeController.cpp
+    HelpOverlay.cpp
     App.cpp
 )
 
@@ -52,6 +53,7 @@ if(ENDO_TESTING)
         ScanWorker_test.cpp
         ThemeController_test.cpp
         DiskUsageModel_test.cpp
+        HelpOverlay_test.cpp
         App_test.cpp
     )
     target_link_libraries(test-tuidu PRIVATE tuidu-core Catch2::Catch2)
