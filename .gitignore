@@ -1,0 +1,11 @@
+.cache/
+_deps/
+out/
+build/
+target/
+
+compile_commands.json
+/contour/
+/src/crispy/
+__pycache__/
+*.egg-info/
