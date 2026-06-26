@@ -19,8 +19,15 @@ namespace
     constexpr int kPadding = 2;    ///< Horizontal padding inside the border.
 } // namespace
 
-HelpOverlay::HelpOverlay(Keymap const& keymap): _entries(keymap.helpEntries())
+HelpOverlay::HelpOverlay(Keymap const& keymap, std::span<ChordSequenceDef const> sequences):
+    _entries(keymap.helpEntries())
 {
+    // Append chord-sequence rows (e.g. "dd  Delete selected") after the single-key bindings, so
+    // the same data tables that drive behavior also drive the help — no parallel list to maintain.
+    for (auto const& seq: sequences)
+        if (!seq.help.empty())
+            _entries.push_back(HelpEntry { .key = seq.display, .help = seq.help });
+
     // Width = key column + longest description, bounded by a sane minimum (the title).
     std::size_t longestDesc = 0;
     for (auto const& e: _entries)

@@ -87,6 +87,13 @@ class Tree
     /// @param items Item count to add to the aggregate.
     void propagateUp(NodeId id, std::int64_t size, std::int64_t blocks, std::uint64_t items);
 
+    /// Marks @p id (and thus its whole subtree) as deleted and subtracts its subtree totals from
+    /// every ancestor's aggregate. The node stays in the arena (so @ref NodeId handles remain
+    /// valid) but is flagged @ref NodeFlag::Deleted, which excludes it from its parent's child
+    /// index on the next @ref rebuildChildIndex. Used when an entry is removed from disk.
+    /// @param id The node to remove. No-op for @ref InvalidNode or the root.
+    void removeSubtree(NodeId id);
+
   private:
     /// Interns @p name into the string arena and returns its (offset, length).
     [[nodiscard]] std::pair<std::uint32_t, std::uint16_t> internName(std::string_view name);

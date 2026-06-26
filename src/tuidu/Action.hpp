@@ -17,16 +17,16 @@ enum class Action : std::uint8_t
     None, ///< No-op / unbound.
 
     // Navigation
-    MoveUp,     ///< Move the cursor up one row.
-    MoveDown,   ///< Move the cursor down one row.
-    MoveTop,    ///< Jump to the first row.
-    MoveBottom, ///< Jump to the last row.
+    MoveUp,       ///< Move the cursor up one row.
+    MoveDown,     ///< Move the cursor down one row.
+    MoveTop,      ///< Jump to the first row.
+    MoveBottom,   ///< Jump to the last row.
     PageUp,       ///< Scroll up one page.
     PageDown,     ///< Scroll down one page.
     HalfPageUp,   ///< Scroll up half a page (Ctrl+U).
     HalfPageDown, ///< Scroll down half a page (Ctrl+D).
     Descend,      ///< Enter the selected directory.
-    Ascend,     ///< Go to the parent directory.
+    Ascend,       ///< Go to the parent directory.
 
     // Sorting
     SortBySize,  ///< Sort by size (toggles direction on repeat).
@@ -42,6 +42,8 @@ enum class Action : std::uint8_t
     SearchOpen, ///< Open the search/filter prompt.
     Rescan,     ///< Re-run the scan for the current root.
     ShowInfo,   ///< Show details for the selected item.
+    Delete,     ///< Recursively delete the selected item (triggered by the `dd` chord).
+    YankPath,   ///< Copy the selected item's full path to the clipboard (the `yy` chord).
     Help,       ///< Toggle the help overlay.
     Quit,       ///< Exit the application.
 };

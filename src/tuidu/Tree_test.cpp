@@ -181,6 +181,57 @@ TEST_CASE("Tree: propagateUp rolls aggregates to the root", "[tree]")
     CHECK(f.tree[f.root].aggBlocks == 5120);
 }
 
+TEST_CASE("Tree: removeSubtree drops a child and rolls aggregates back down", "[tree]")
+{
+    Fixture f;
+    // Aggregate the fixture as the scanner would: x=100/4096, y=50/512, a=10/512, b=20/1024.
+    f.tree.propagateUp(f.x, 100, 4096, 1);
+    f.tree.propagateUp(f.y, 50, 512, 1);
+    f.tree.propagateUp(f.a, 10, 512, 1);
+    f.tree.propagateUp(f.b, 20, 1024, 1);
+
+    auto const rootSizeBefore = f.tree[f.root].aggSize;
+    auto const rootBlocksBefore = f.tree[f.root].aggBlocks;
+    auto const rootItemsBefore = f.tree[f.root].itemCount;
+    auto const subSize = f.tree[f.sub].aggSize;
+    auto const subBlocks = f.tree[f.sub].aggBlocks;
+    auto const subItems = f.tree[f.sub].itemCount;
+
+    // Removing 'sub' must subtract its whole subtree (x + y) from the root's aggregate.
+    f.tree.removeSubtree(f.sub);
+
+    CHECK(f.tree[f.sub].isDeleted());
+    CHECK(f.tree[f.root].aggSize == rootSizeBefore - subSize);
+    CHECK(f.tree[f.root].aggBlocks == rootBlocksBefore - subBlocks);
+    CHECK(f.tree[f.root].itemCount == rootItemsBefore - subItems);
+
+    // After re-sorting, the deleted child is gone from the parent's view; siblings remain.
+    auto byNameAsc = [](Tree const& t, NodeId lhs, NodeId rhs) {
+        return t.name(lhs) < t.name(rhs);
+    };
+    f.tree.rebuildChildIndex(f.root, byNameAsc);
+    auto kids = f.tree.childrenOf(f.root);
+    REQUIRE(kids.size() == 2);
+    CHECK(f.tree.name(kids[0]) == "a.txt");
+    CHECK(f.tree.name(kids[1]) == "b.txt");
+}
+
+TEST_CASE("Tree: removeSubtree is a no-op for the root and is idempotent", "[tree]")
+{
+    Fixture f;
+    f.tree.propagateUp(f.a, 10, 512, 1);
+    auto const rootSize = f.tree[f.root].aggSize;
+
+    f.tree.removeSubtree(f.root); // root cannot be removed
+    CHECK_FALSE(f.tree[f.root].isDeleted());
+    CHECK(f.tree[f.root].aggSize == rootSize);
+
+    f.tree.removeSubtree(f.a);
+    auto const afterFirst = f.tree[f.root].aggSize;
+    f.tree.removeSubtree(f.a); // second removal must not subtract again
+    CHECK(f.tree[f.root].aggSize == afterFirst);
+}
+
 TEST_CASE("Tree: arena growth does not invalidate NodeIds", "[tree]")
 {
     Tree tree;
