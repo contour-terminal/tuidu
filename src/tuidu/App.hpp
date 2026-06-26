@@ -99,8 +99,12 @@ class App
 
     std::mutex _treeMutex;           ///< Guards _tree between the scan worker and the UI.
     bool _scanInFlight = false;      ///< True while a scan is running.
+    bool _dirty = true;              ///< Whether the screen needs a redraw (starts true).
     std::uint64_t _scannedItems = 0; ///< Latest scanned-item total (status).
     std::int64_t _scannedBytes = 0;  ///< Latest scanned-byte total (status).
+
+    static constexpr int kScanPollMs = 60;   ///< Poll interval while a scan streams progress.
+    static constexpr int kIdlePollMs = 1000;  ///< Idle poll interval (input/scan wakeups preempt it).
 };
 
 } // namespace tuidu

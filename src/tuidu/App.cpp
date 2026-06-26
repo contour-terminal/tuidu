@@ -91,6 +91,7 @@ void App::applyProgress()
         refreshStatus();
     }
     _screen.invalidate();
+    _dirty = true;
 }
 
 bool App::dispatch(Action action)
@@ -125,6 +126,7 @@ bool App::dispatch(Action action)
     }
     refreshStatus();
     _screen.invalidate();
+    _dirty = true;
     return true;
 }
 
@@ -135,20 +137,29 @@ endo::coro::Task<void> App::mainFlow()
     while (running)
     {
         applyProgress();
-        // Rendering reads the tree (the model walks it); hold the mutex so the scan worker
-        // is not mutating it concurrently.
+
+        // Render only when something changed. The Screen diff-renders, but skipping a
+        // no-op draw entirely avoids burning CPU on idle wakeups.
+        if (_dirty)
         {
+            // Rendering reads the tree (the model walks it); hold the mutex so the scan
+            // worker is not mutating it concurrently.
             std::scoped_lock const lock { _treeMutex };
             _screen.draw();
+            _dirty = false;
         }
 
-        auto const pollMs = std::chrono::milliseconds { _scanInFlight ? 60 : -1 };
+        // nextActivity() takes a *positive* timeout (it is a relative deadline; a negative
+        // value would resolve to a past deadline and busy-spin on wait(0)). Poll briefly
+        // while a scan streams progress, and idle on a long interval otherwise — input and
+        // scan wakeups interrupt the wait immediately regardless of the timeout.
+        auto const pollMs = std::chrono::milliseconds { _scanInFlight ? kScanPollMs : kIdlePollMs };
         auto activity = co_await _runtime.nextActivity(pollMs);
 
         switch (activity.kind)
         {
             case tui::runtime::ActivityKind::AgentReady: continue; // scan progress pending; drain at the top
-            case tui::runtime::ActivityKind::Timeout: continue;    // spinner tick / idle; redraw at the top
+            case tui::runtime::ActivityKind::Timeout: continue;    // idle tick; nothing to do
             case tui::runtime::ActivityKind::Event: break;
         }
 
@@ -174,11 +185,14 @@ endo::coro::Task<void> App::mainFlow()
             {
                 _screen.setTheme(tui::currentTheme());
                 _screen.invalidate();
+                _dirty = true;
             }
         }
         else
         {
+            // Resize / mouse / focus: let the component tree handle it and redraw.
             (void) _screen.dispatchEvent(event);
+            _dirty = true;
         }
     }
     co_return;
