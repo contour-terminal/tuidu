@@ -30,6 +30,36 @@
             }
         },
         {
+            "name": "windows-base",
+            "hidden": true,
+            "inherits": "base",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        },
+        {
+            "name": "clangcl-debug",
+            "inherits": "windows-base",
+            "displayName": "clang-cl Debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_C_COMPILER": "clang-cl",
+                "CMAKE_CXX_COMPILER": "clang-cl"
+            }
+        },
+        {
+            "name": "clangcl-release",
+            "inherits": "windows-base",
+            "displayName": "clang-cl Release",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_C_COMPILER": "clang-cl",
+                "CMAKE_CXX_COMPILER": "clang-cl"
+            }
+        },
+        {
             "name": "clang-debug",
             "inherits": "unix-base",
             "displayName": "Clang Debug",
@@ -75,12 +105,24 @@
         }
     ],
     "buildPresets": [
+        { "name": "clangcl-debug", "configurePreset": "clangcl-debug" },
+        { "name": "clangcl-release", "configurePreset": "clangcl-release" },
         { "name": "clang-debug", "configurePreset": "clang-debug" },
         { "name": "clang-release", "configurePreset": "clang-release" },
         { "name": "clang-coverage", "configurePreset": "clang-coverage" },
         { "name": "gcc-debug", "configurePreset": "gcc-debug" }
     ],
     "testPresets": [
+        {
+            "name": "clangcl-debug",
+            "configurePreset": "clangcl-debug",
+            "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "clangcl-release",
+            "configurePreset": "clangcl-release",
+            "output": { "outputOnFailure": true }
+        },
         {
             "name": "clang-debug",
             "configurePreset": "clang-debug",
