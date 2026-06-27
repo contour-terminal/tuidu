@@ -187,7 +187,7 @@ CliParse parseCommandLine(int argc, char const* const* argv)
                 stderr, "tuidu: invalid --theme value '{}' (expected auto|dark|light|mono).", *theme);
             return CliParse { .options = std::nullopt, .exitCode = 2 };
         }
-        options.themeMode = *mode;
+        options.themeMode = mode;
     }
 
     if (auto const units = strOpt(flags, "units"))
@@ -198,7 +198,7 @@ CliParse parseCommandLine(int argc, char const* const* argv)
             std::println(stderr, "tuidu: invalid --units value '{}' (expected binary|si).", *units);
             return CliParse { .options = std::nullopt, .exitCode = 2 };
         }
-        options.units = *system;
+        options.units = system;
     }
 
     if (auto const mode = strOpt(flags, "size-mode"))
@@ -209,7 +209,7 @@ CliParse parseCommandLine(int argc, char const* const* argv)
             std::println(stderr, "tuidu: invalid --size-mode value '{}' (expected apparent|disk).", *mode);
             return CliParse { .options = std::nullopt, .exitCode = 2 };
         }
-        options.sizeMode = *sizeMode;
+        options.sizeMode = sizeMode;
     }
 
     if (auto const sort = strOpt(flags, "sort"))
@@ -222,7 +222,7 @@ CliParse parseCommandLine(int argc, char const* const* argv)
                          *sort);
             return CliParse { .options = std::nullopt, .exitCode = 2 };
         }
-        options.sortMode = *index;
+        options.sortMode = index;
     }
 
     if (flags.boolean(key("cross-devices")))

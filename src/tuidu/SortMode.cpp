@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-#include <algorithm>
+#include <ranges>
 
 #include <tuidu/SortMode.hpp>
 
@@ -94,10 +94,10 @@ std::size_t nextSortMode(std::size_t current, Action action) noexcept
 
 std::optional<std::size_t> sortModeIndexFromKey(std::string_view key) noexcept
 {
-    auto const row = std::ranges::find(SortModes, key, &SortDef::key);
-    if (row == SortModes.end())
-        return std::nullopt;
-    return static_cast<std::size_t>(std::ranges::distance(SortModes.begin(), row));
+    for (auto const i: std::views::iota(std::size_t { 0 }, SortModes.size()))
+        if (SortModes[i].key == key)
+            return i;
+    return std::nullopt;
 }
 
 } // namespace tuidu

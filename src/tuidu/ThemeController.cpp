@@ -21,10 +21,10 @@ namespace
 
 std::optional<ThemeMode> themeModeFromString(std::string_view name) noexcept
 {
-    auto const row = std::ranges::find(ThemeModeNames, name, &std::pair<std::string_view, ThemeMode>::first);
-    if (row == ThemeModeNames.end())
-        return std::nullopt;
-    return row->second;
+    for (auto const& [label, mode]: ThemeModeNames)
+        if (label == name)
+            return mode;
+    return std::nullopt;
 }
 
 ThemeController::ThemeController(ThemeMode mode) noexcept: _mode(mode)

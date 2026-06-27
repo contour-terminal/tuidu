@@ -23,10 +23,10 @@ namespace
 
 std::optional<SizeMode> sizeModeFromString(std::string_view name) noexcept
 {
-    auto const row = std::ranges::find(SizeModeNames, name, &std::pair<std::string_view, SizeMode>::first);
-    if (row == SizeModeNames.end())
-        return std::nullopt;
-    return row->second;
+    for (auto const& [label, mode]: SizeModeNames)
+        if (label == name)
+            return mode;
+    return std::nullopt;
 }
 
 std::int64_t RenderCtx::metric(NodeId id) const noexcept

@@ -33,11 +33,10 @@ namespace
 
 std::optional<UnitSystem> unitSystemFromString(std::string_view name) noexcept
 {
-    auto const row =
-        std::ranges::find(UnitSystemNames, name, &std::pair<std::string_view, UnitSystem>::first);
-    if (row == UnitSystemNames.end())
-        return std::nullopt;
-    return row->second;
+    for (auto const& [label, system]: UnitSystemNames)
+        if (label == name)
+            return system;
+    return std::nullopt;
 }
 
 std::string formatSize(std::int64_t bytes, UnitSystem system)
