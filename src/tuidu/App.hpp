@@ -11,6 +11,7 @@
 #include <tui/runtime/EventSource.hpp>
 #include <tui/runtime/TuiRuntime.hpp>
 
+#include <cstddef>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -42,6 +43,9 @@ struct AppConfig
     ScanOptions scanOptions {};             ///< Scan policy.
     SizeMode sizeMode = SizeMode::Apparent; ///< Initial size metric.
     UnitSystem units = UnitSystem::Binary;  ///< Initial unit formatting.
+    std::size_t sortMode = 0;               ///< Initial sort mode (index into @ref sortModes; 0 = size ↓).
+    double largeThreshold = 0.20;           ///< Parent-share at/above which a row colors as "large".
+    double hugeThreshold = 0.50;            ///< Parent-share at/above which a row colors as "huge".
 };
 
 /// The tuidu application. Owns the model/view/scanner and runs the main coroutine loop
@@ -152,8 +156,8 @@ class App
     std::uint64_t _scannedItems = 0;    ///< Latest scanned-item total (status).
     std::int64_t _scannedBytes = 0;     ///< Latest scanned-byte total (status).
 
-    static constexpr int kScanPollMs = 60;   ///< Poll interval while a scan streams progress.
-    static constexpr int kIdlePollMs = 1000; ///< Idle poll interval (input/scan wakeups preempt it).
+    static constexpr int ScanPollMs = 60;   ///< Poll interval while a scan streams progress.
+    static constexpr int IdlePollMs = 1000; ///< Idle poll interval (input/scan wakeups preempt it).
 };
 
 } // namespace tuidu

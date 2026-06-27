@@ -60,7 +60,7 @@ TEST_CASE("formatSize: every binary unit row is reachable", "[sizeformat][tables
         std::string_view suffix;
     };
 
-    constexpr std::array<Case, 7> cases { {
+    constexpr std::array<Case, 7> Cases { {
         { .bytes = 5, .suffix = "B" },
         { .bytes = std::int64_t { 5 } << 10, .suffix = "KiB" },
         { .bytes = std::int64_t { 5 } << 20, .suffix = "MiB" },
@@ -69,10 +69,19 @@ TEST_CASE("formatSize: every binary unit row is reachable", "[sizeformat][tables
         { .bytes = std::int64_t { 5 } << 50, .suffix = "PiB" },
         { .bytes = std::int64_t { 5 } << 60, .suffix = "EiB" },
     } };
-    for (auto const& c: cases)
+    for (auto const& c: Cases)
     {
         auto const text = formatSize(c.bytes, UnitSystem::Binary);
         INFO("bytes=" << c.bytes << " text=" << text);
         CHECK(text.find(c.suffix) != std::string::npos);
     }
+}
+
+TEST_CASE("unitSystemFromString: every name maps; unknown is rejected", "[sizeformat][tables]")
+{
+    CHECK(unitSystemFromString("binary") == UnitSystem::Binary);
+    CHECK(unitSystemFromString("si") == UnitSystem::SI);
+    CHECK_FALSE(unitSystemFromString("SI").has_value()); // case-sensitive
+    CHECK_FALSE(unitSystemFromString("").has_value());
+    CHECK_FALSE(unitSystemFromString("metric").has_value());
 }

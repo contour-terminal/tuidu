@@ -46,10 +46,10 @@ class ChordRecognizer
     /// Monotonic time source; injected so tests can drive time deterministically.
     using Clock = std::function<std::chrono::steady_clock::time_point()>;
 
-    /// @param sequences The chord-sequence table to recognize (defaults to @ref kChordSequences).
+    /// @param sequences The chord-sequence table to recognize (defaults to @ref ChordSequences).
     /// @param timeout Maximum gap allowed between the lead and completing key press.
     /// @param clock Monotonic time source; defaults to std::chrono::steady_clock::now.
-    explicit ChordRecognizer(std::span<ChordSequenceDef const> sequences = kChordSequences,
+    explicit ChordRecognizer(std::span<ChordSequenceDef const> sequences = ChordSequences,
                              std::chrono::milliseconds timeout = std::chrono::milliseconds { 500 },
                              Clock clock = {});
 

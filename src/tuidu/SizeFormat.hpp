@@ -6,6 +6,7 @@
 
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -19,6 +20,11 @@ enum class UnitSystem : std::uint8_t
     SI,     ///< Powers of 1000: B, kB, MB, GB, TB, PB, EB.
 };
 
+/// Parses a @ref UnitSystem from its lowercase config/CLI name (data-driven lookup).
+/// @param name "binary" or "si" (case-sensitive).
+/// @return The matching unit system, or @c std::nullopt if @p name is unrecognized.
+[[nodiscard]] std::optional<UnitSystem> unitSystemFromString(std::string_view name) noexcept;
+
 /// One row of a unit table: the threshold at/above which it applies, the divisor to
 /// scale bytes into the unit, and the suffix to print. Rows are ordered largest-first.
 struct UnitRow
@@ -29,7 +35,7 @@ struct UnitRow
 };
 
 /// Binary (1024-based) unit table, largest unit first.
-inline constexpr std::array<UnitRow, 7> kBinaryUnits { {
+inline constexpr std::array<UnitRow, 7> BinaryUnits { {
     { std::int64_t { 1 } << 60, 1152921504606846976.0, "EiB" },
     { std::int64_t { 1 } << 50, 1125899906842624.0, "PiB" },
     { std::int64_t { 1 } << 40, 1099511627776.0, "TiB" },
@@ -40,7 +46,7 @@ inline constexpr std::array<UnitRow, 7> kBinaryUnits { {
 } };
 
 /// SI (1000-based) unit table, largest unit first.
-inline constexpr std::array<UnitRow, 7> kSiUnits { {
+inline constexpr std::array<UnitRow, 7> SiUnits { {
     { 1'000'000'000'000'000'000LL, 1e18, "EB" },
     { 1'000'000'000'000'000LL, 1e15, "PB" },
     { 1'000'000'000'000LL, 1e12, "TB" },

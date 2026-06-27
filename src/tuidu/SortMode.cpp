@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
+#include <algorithm>
+
 #include <tuidu/SortMode.hpp>
 
 namespace tuidu
@@ -44,33 +46,39 @@ namespace
         return t.name(a) < t.name(b);
     }
 
-    constexpr std::array<SortDef, 5> kSortModes { {
-        { .label = "Size ↓", .triggerAction = Action::SortBySize, .less = &lessBySizeDesc },
-        { .label = "Size ↑", .triggerAction = Action::SortBySize, .less = &lessBySizeAsc },
-        { .label = "Name", .triggerAction = Action::SortByName, .less = &lessByName },
-        { .label = "Items ↓", .triggerAction = Action::SortByItems, .less = &lessByItemsDesc },
-        { .label = "Date ↓", .triggerAction = Action::SortByMtime, .less = &lessByMtimeDesc },
+    constexpr std::array<SortDef, 5> SortModes { {
+        { .label = "Size ↓",
+          .key = "size-desc",
+          .triggerAction = Action::SortBySize,
+          .less = &lessBySizeDesc },
+        { .label = "Size ↑", .key = "size-asc", .triggerAction = Action::SortBySize, .less = &lessBySizeAsc },
+        { .label = "Name", .key = "name", .triggerAction = Action::SortByName, .less = &lessByName },
+        { .label = "Items ↓",
+          .key = "items",
+          .triggerAction = Action::SortByItems,
+          .less = &lessByItemsDesc },
+        { .label = "Date ↓", .key = "date", .triggerAction = Action::SortByMtime, .less = &lessByMtimeDesc },
     } };
 } // namespace
 
 std::span<SortDef const> sortModes() noexcept
 {
-    return kSortModes;
+    return SortModes;
 }
 
 std::size_t nextSortMode(std::size_t current, Action action) noexcept
 {
-    auto const count = kSortModes.size();
+    auto const count = SortModes.size();
     if (current >= count)
         current = 0;
 
     // Re-selecting the current mode's action cycles to the next row with that action.
-    if (kSortModes[current].triggerAction == action)
+    if (SortModes[current].triggerAction == action)
     {
         for (auto offset = std::size_t { 1 }; offset < count; ++offset)
         {
             auto const idx = (current + offset) % count;
-            if (kSortModes[idx].triggerAction == action)
+            if (SortModes[idx].triggerAction == action)
                 return idx;
         }
         return current; // only one row uses this action
@@ -78,10 +86,18 @@ std::size_t nextSortMode(std::size_t current, Action action) noexcept
 
     // Otherwise jump to the first row matching the action.
     for (auto idx = std::size_t { 0 }; idx < count; ++idx)
-        if (kSortModes[idx].triggerAction == action)
+        if (SortModes[idx].triggerAction == action)
             return idx;
 
     return current; // action not a sort trigger
+}
+
+std::optional<std::size_t> sortModeIndexFromKey(std::string_view key) noexcept
+{
+    auto const row = std::ranges::find(SortModes, key, &SortDef::key);
+    if (row == SortModes.end())
+        return std::nullopt;
+    return static_cast<std::size_t>(std::ranges::distance(SortModes.begin(), row));
 }
 
 } // namespace tuidu

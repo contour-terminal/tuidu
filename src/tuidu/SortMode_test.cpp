@@ -139,3 +139,22 @@ TEST_CASE("nextSortMode: non-sort action leaves selection unchanged", "[sortmode
 {
     CHECK(nextSortMode(1, Action::Quit) == 1);
 }
+
+TEST_CASE("sortModeIndexFromKey: every key round-trips; unknown is rejected", "[sortmode][tables]")
+{
+    CHECK(sortModeIndexFromKey("size-desc") == 0);
+    CHECK(sortModeIndexFromKey("size-asc") == 1);
+    CHECK(sortModeIndexFromKey("name") == 2);
+    CHECK(sortModeIndexFromKey("items") == 3);
+    CHECK(sortModeIndexFromKey("date") == 4);
+
+    // Every table row's key resolves back to its own index.
+    for (std::size_t i = 0; i < sortModes().size(); ++i)
+    {
+        INFO("key: " << sortModes()[i].key);
+        CHECK(sortModeIndexFromKey(sortModes()[i].key) == i);
+    }
+
+    CHECK_FALSE(sortModeIndexFromKey("size").has_value());
+    CHECK_FALSE(sortModeIndexFromKey("").has_value());
+}

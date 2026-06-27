@@ -61,3 +61,13 @@ TEST_CASE("ThemeController: setMode switches and re-applies", "[theme]")
     CHECK(controller.mode() == ThemeMode::Light);
     CHECK(tui::ThemeManager::instance().current().colors.background == tui::lightTheme().colors.background);
 }
+
+TEST_CASE("themeModeFromString: every name maps; unknown is rejected", "[theme][tables]")
+{
+    CHECK(themeModeFromString("auto") == ThemeMode::Auto);
+    CHECK(themeModeFromString("dark") == ThemeMode::Dark);
+    CHECK(themeModeFromString("light") == ThemeMode::Light);
+    CHECK(themeModeFromString("mono") == ThemeMode::Mono);
+    CHECK_FALSE(themeModeFromString("Dark").has_value()); // case-sensitive
+    CHECK_FALSE(themeModeFromString("solarized").has_value());
+}

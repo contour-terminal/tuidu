@@ -26,7 +26,7 @@ struct ChordSequenceDef
 /// The default chord sequences. The size is deduced (std::to_array) so adding a row needs no
 /// count update. `dd` deletes the selected item: pressing `d` twice in quick succession makes
 /// the destructive intent unambiguous.
-inline constexpr auto kChordSequences = std::to_array<ChordSequenceDef>({
+inline constexpr auto ChordSequences = std::to_array<ChordSequenceDef>({
     { .first = "d", .second = "d", .action = Action::Delete, .display = "dd", .help = "Delete selected" },
     { .first = "y",
       .second = "y",

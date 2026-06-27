@@ -26,10 +26,17 @@ add_library(tuidu-core STATIC
     HelpOverlay.cpp
     DeleteProgressDialog.cpp
     App.cpp
+    # Configuration: CLI parsing + YAML config file
+    Cli.cpp
+    Config.cpp
 )
 
 target_include_directories(tuidu-core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
 target_link_libraries(tuidu-core PUBLIC tui endo-platform endo-coro)
+# yaml-cpp and crispy::cli back the config file and CLI parsing respectively; both are
+# implementation details confined to Config.cpp / Cli.cpp, so keep them PRIVATE.
+target_link_libraries(tuidu-core PRIVATE yaml-cpp::yaml-cpp crispy::core)
+target_compile_definitions(tuidu-core PRIVATE TUIDU_VERSION="${TUIDU_VERSION_STRING}")
 target_compile_features(tuidu-core PUBLIC cxx_std_23)
 
 set_pedantic_compiler_warnings(tuidu-core)
@@ -62,6 +69,9 @@ if(ENDO_TESTING)
         HelpOverlay_test.cpp
         DeleteProgressDialog_test.cpp
         App_test.cpp
+        Cli_test.cpp
+        Config_test.cpp
+        ConfigPaths_test.cpp
     )
     target_link_libraries(test-tuidu PRIVATE tuidu-core Catch2::Catch2)
     add_test(NAME test-tuidu COMMAND test-tuidu)

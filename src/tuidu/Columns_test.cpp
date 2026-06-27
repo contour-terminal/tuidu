@@ -119,3 +119,11 @@ TEST_CASE("Columns: fmtMtime renders a YYYY-MM-DD HH:MM stamp", "[columns]")
     CHECK(text[10] == ' ');
     CHECK(text[13] == ':');
 }
+
+TEST_CASE("sizeModeFromString: every name maps; unknown is rejected", "[columns][tables]")
+{
+    CHECK(sizeModeFromString("apparent") == SizeMode::Apparent);
+    CHECK(sizeModeFromString("disk") == SizeMode::Disk);
+    CHECK_FALSE(sizeModeFromString("Disk").has_value()); // case-sensitive
+    CHECK_FALSE(sizeModeFromString("blocks").has_value());
+}

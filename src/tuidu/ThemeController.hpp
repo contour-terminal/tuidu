@@ -8,6 +8,8 @@
 #include <tui/Theme.hpp>
 
 #include <cstdint>
+#include <optional>
+#include <string_view>
 
 namespace tuidu
 {
@@ -20,6 +22,11 @@ enum class ThemeMode : std::uint8_t
     Light, ///< Always use the light theme.
     Mono,  ///< Always use the monochrome theme.
 };
+
+/// Parses a @ref ThemeMode from its lowercase config/CLI name (data-driven lookup).
+/// @param name One of "auto", "dark", "light", "mono" (case-sensitive).
+/// @return The matching mode, or @c std::nullopt if @p name is unrecognized.
+[[nodiscard]] std::optional<ThemeMode> themeModeFromString(std::string_view name) noexcept;
 
 /// Resolves a @ref ThemeMode plus the terminal's reported @c tui::ColorScheme into a
 /// concrete @c tui::Theme and installs it (via @c tui::ThemeManager and the @c Screen).

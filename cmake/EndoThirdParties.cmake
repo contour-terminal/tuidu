@@ -4,10 +4,10 @@
 # and falls back to CPM if not found. When ENABLE_STATIC_LINKING is ON, dependencies
 # are built from source via CPM so static libraries are available.
 #
-# tuidu only needs the subset required by the vendored coro/platform/tui chain:
+# tuidu needs the subset required by the vendored coro/platform/tui chain:
 #   Catch2 (tests), Microsoft.GSL + boxed-cpp + reflection-cpp (crispy::core deps),
-#   libunicode (unicode::unicode), stb (stb_image). The endo-only deps (yaml-cpp,
-#   nlohmann_json, CURL, mbedTLS, llama.cpp) are intentionally dropped.
+#   libunicode (unicode::unicode), stb (stb_image), plus yaml-cpp for the configuration
+#   file. The remaining endo-only deps (nlohmann_json, CURL, mbedTLS, llama.cpp) are dropped.
 
 set(CPM_VERSION "0.40.8")
 set(CPM_HASH_SUM "78ba32abdf798bc616bab7c73aac32a17bbd7b06ad9e26a6add69de8f3ae4791")
@@ -39,6 +39,7 @@ macro(EndoThirdPartiesSummary2)
     message(STATUS "boxed-cpp           ${THIRDPARTY_BUILTIN_boxed_cpp}")
     message(STATUS "reflection-cpp      ${THIRDPARTY_BUILTIN_reflection_cpp}")
     message(STATUS "stb                 ${THIRDPARTY_BUILTIN_stb}")
+    message(STATUS "yaml-cpp            ${THIRDPARTY_BUILTIN_yaml_cpp}")
     message(STATUS "------------------------------------------------------------------------------")
 endmacro()
 
@@ -157,3 +158,30 @@ CPMAddPackage(
     SYSTEM YES
 )
 set(THIRDPARTY_BUILTIN_reflection_cpp "CPM (v0.4.0)")
+
+# ==============================================================================
+# yaml-cpp - YAML parser for the tuidu configuration file
+# ==============================================================================
+find_package(yaml-cpp QUIET)
+if(TARGET yaml-cpp::yaml-cpp)
+    set(THIRDPARTY_BUILTIN_yaml_cpp "system package")
+else()
+    CPMAddPackage(
+        NAME yaml-cpp
+        GITHUB_REPOSITORY jbeder/yaml-cpp
+        GIT_TAG 0.8.0
+        OPTIONS
+            "YAML_CPP_BUILD_TESTS OFF"
+            "YAML_CPP_BUILD_TOOLS OFF"
+            "YAML_CPP_BUILD_CONTRIB OFF"
+            "YAML_CPP_INSTALL OFF"
+            "YAML_CPP_FORMAT_SOURCE OFF"
+            "BUILD_SHARED_LIBS OFF"
+            # yaml-cpp 0.8.0 still declares cmake_minimum_required(VERSION 2.6..3.5),
+            # which CMake >= 4.0 rejects; allow it to configure under the old policy.
+            "CMAKE_POLICY_VERSION_MINIMUM 3.5"
+        EXCLUDE_FROM_ALL YES
+        SYSTEM YES
+    )
+    set(THIRDPARTY_BUILTIN_yaml_cpp "CPM (v0.8.0)")
+endif()

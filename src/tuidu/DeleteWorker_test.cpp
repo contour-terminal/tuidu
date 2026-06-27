@@ -49,12 +49,12 @@ TEST_CASE("DeleteWorker: removes a whole directory tree and reports done", "[del
     fs.addFile("/root/sub/y.txt", "yy");
     fs.addFile("/root/a.txt", "a");
     // 4 entries under /root (sub, x, y, a) + /root itself = 5.
-    constexpr std::uint64_t total = 5;
+    constexpr std::uint64_t Total = 5;
 
     MessageQueue<DeleteProgress> queue;
     {
         DeleteWorker worker { fs, queue };
-        worker.start("/root", total, DeleteMode::Recursive);
+        worker.start("/root", Total, DeleteMode::Recursive);
 
         auto const messages = waitForDone(queue);
         REQUIRE_FALSE(messages.empty());
@@ -62,7 +62,7 @@ TEST_CASE("DeleteWorker: removes a whole directory tree and reports done", "[del
         CHECK(last.done);
         CHECK_FALSE(last.cancelled);
         CHECK_FALSE(last.error.has_value());
-        CHECK(last.deleted == total);
+        CHECK(last.deleted == Total);
     }
 
     CHECK_FALSE(fs.exists("/root"));

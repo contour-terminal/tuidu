@@ -13,7 +13,7 @@ namespace tuidu
 
 namespace
 {
-    constexpr auto kNoPos = std::string_view::npos;
+    constexpr auto NoPos = std::string_view::npos;
 
     /// @return Lowercased copy of @p s (ASCII), for case-insensitive substring search.
     [[nodiscard]] std::string toLower(std::string_view s)
@@ -55,7 +55,7 @@ std::vector<ScoredNode> rankMatches(Tree const& tree,
     {
         auto const name = tree.name(id);
 
-        if (auto const pos = substringPosition(name, query); pos != kNoPos)
+        if (auto const pos = substringPosition(name, query); pos != NoPos)
         {
             results.push_back(ScoredNode { .node = id, .substring = true, .position = pos, .score = 0 });
             continue;
@@ -66,7 +66,7 @@ std::vector<ScoredNode> rankMatches(Tree const& tree,
         {
             auto const score = tui::FuzzyMatch::calculateScore(0, name, query, fuzzy);
             results.push_back(
-                ScoredNode { .node = id, .substring = false, .position = kNoPos, .score = score });
+                ScoredNode { .node = id, .substring = false, .position = NoPos, .score = score });
         }
     }
 

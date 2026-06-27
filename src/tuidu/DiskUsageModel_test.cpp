@@ -77,16 +77,16 @@ TEST_CASE("DiskUsageModel: the bar column is filled proportionally", "[model]")
     DiskUsageModel model(f.tree);
 
     // The bar column sits between Size and %; it is column index 1 and is 12 cells wide.
-    constexpr std::size_t barCol = 1;
-    auto const barWidth = static_cast<int>(columns()[barCol].width);
+    constexpr std::size_t BarCol = 1;
+    auto const barWidth = static_cast<int>(columns()[BarCol].width);
     REQUIRE(barWidth == 12);
 
     // Default sort is "Size ↓": big (200/300) before small (100/300) of the parent.
     auto const rows = model.rows();
     REQUIRE(rows.size() == 2);
 
-    auto const bigBar = model.cellText(rows[0], barCol);
-    auto const smallBar = model.cellText(rows[1], barCol);
+    auto const bigBar = model.cellText(rows[0], BarCol);
+    auto const smallBar = model.cellText(rows[1], BarCol);
 
     // The bar fills its full column width (no longer empty).
     CHECK(bigBar.size() == static_cast<std::size_t>(barWidth));
@@ -156,4 +156,18 @@ TEST_CASE("DiskUsageModel: currentTitle is the node's full path", "[model]")
     CHECK(model.currentTitle() == "/r");
     model.descend(static_cast<tui::RowId>(f.big));
     CHECK(model.currentTitle() == "/r/big");
+}
+
+TEST_CASE("DiskUsageModel: setColorThresholds re-classifies a row's color", "[model]")
+{
+    ModelFixture f;
+    DiskUsageModel model(f.tree);
+    auto const smallRow = static_cast<tui::RowId>(f.small); // 100/300 ≈ 33% of parent
+
+    // Default thresholds (large=0.20, huge=0.50): 33% is "large" (not bold).
+    CHECK_FALSE(model.rowStyle(smallRow, false).style.bold);
+
+    // Drop the huge threshold below 33%: the same row now classifies as "huge" (bold).
+    model.setColorThresholds(0.20, 0.30);
+    CHECK(model.rowStyle(smallRow, false).style.bold);
 }

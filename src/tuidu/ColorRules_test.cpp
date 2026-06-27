@@ -11,8 +11,8 @@ using namespace tuidu;
 
 namespace
 {
-constexpr double kLarge = 0.20;
-constexpr double kHuge = 0.50;
+constexpr double Large = 0.20;
+constexpr double Huge = 0.50;
 
 /// Distinct palette so each slot is identifiable by color in assertions.
 [[nodiscard]] tui::ColorPalette markedPalette()
@@ -42,8 +42,8 @@ struct Fix
         return ColorContext { .tree = tree,
                               .node = node,
                               .percentOfParent = percent,
-                              .largeThreshold = kLarge,
-                              .hugeThreshold = kHuge };
+                              .largeThreshold = Large,
+                              .hugeThreshold = Huge };
     }
 };
 } // namespace
@@ -104,7 +104,7 @@ TEST_CASE("ColorRules: table ends with a catch-all", "[colorrules]")
     ColorContext anything { .tree = Tree {}, // unused by the catch-all predicate
                             .node = 0,
                             .percentOfParent = 0.0,
-                            .largeThreshold = kLarge,
-                            .hugeThreshold = kHuge };
+                            .largeThreshold = Large,
+                            .hugeThreshold = Huge };
     CHECK(rules.back().match(anything));
 }

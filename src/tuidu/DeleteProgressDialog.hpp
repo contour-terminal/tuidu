@@ -51,9 +51,9 @@ class DeleteProgressDialog: public tui::Component
     std::string _status;    ///< The status line text.
     float _progress = 0.0f; ///< Completion fraction in [0, 1].
 
-    static constexpr int kWidth = 54;  ///< Fixed dialog width (columns), borders included.
-    static constexpr int kHeight = 6;  ///< Fixed dialog height (rows), borders included.
-    static constexpr int kPadding = 2; ///< Horizontal padding inside the border.
+    static constexpr int Width = 54;  ///< Fixed dialog width (columns), borders included.
+    static constexpr int Height = 6;  ///< Fixed dialog height (rows), borders included.
+    static constexpr int Padding = 2; ///< Horizontal padding inside the border.
 };
 
 } // namespace tuidu

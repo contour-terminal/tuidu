@@ -28,8 +28,8 @@ class HelpOverlay: public tui::Component
     /// @param keymap The keymap whose help entries to display (copied into rows).
     /// @param sequences Multi-key chord sequences (e.g. `dd`) to also list; their non-empty
     ///        help rows are appended after the single-key bindings. Defaults to
-    ///        @ref kChordSequences.
-    explicit HelpOverlay(Keymap const& keymap, std::span<ChordSequenceDef const> sequences = kChordSequences);
+    ///        @ref ChordSequences.
+    explicit HelpOverlay(Keymap const& keymap, std::span<ChordSequenceDef const> sequences = ChordSequences);
 
     void render(tui::Canvas& canvas) override;
     [[nodiscard]] tui::EventResult onEvent(tui::InputEvent const& event) override;

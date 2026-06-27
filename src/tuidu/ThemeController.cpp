@@ -1,10 +1,31 @@
 // SPDX-License-Identifier: Apache-2.0
+#include <algorithm>
+#include <array>
 #include <utility>
 
 #include <tuidu/ThemeController.hpp>
 
 namespace tuidu
 {
+
+namespace
+{
+    /// Config/CLI name → @ref ThemeMode. Adding a mode is one row here.
+    constexpr std::array<std::pair<std::string_view, ThemeMode>, 4> ThemeModeNames { {
+        { "auto", ThemeMode::Auto },
+        { "dark", ThemeMode::Dark },
+        { "light", ThemeMode::Light },
+        { "mono", ThemeMode::Mono },
+    } };
+} // namespace
+
+std::optional<ThemeMode> themeModeFromString(std::string_view name) noexcept
+{
+    auto const row = std::ranges::find(ThemeModeNames, name, &std::pair<std::string_view, ThemeMode>::first);
+    if (row == ThemeModeNames.end())
+        return std::nullopt;
+    return row->second;
+}
 
 ThemeController::ThemeController(ThemeMode mode) noexcept: _mode(mode)
 {

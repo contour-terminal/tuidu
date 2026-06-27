@@ -14,9 +14,9 @@ namespace tuidu
 
 namespace
 {
-    constexpr std::string_view kTitle = " Help — keys ";
-    constexpr int kKeyColumn = 12; ///< Width reserved for the key column.
-    constexpr int kPadding = 2;    ///< Horizontal padding inside the border.
+    constexpr std::string_view Title = " Help — keys ";
+    constexpr int KeyColumn = 12; ///< Width reserved for the key column.
+    constexpr int Padding = 2;    ///< Horizontal padding inside the border.
 } // namespace
 
 HelpOverlay::HelpOverlay(Keymap const& keymap, std::span<ChordSequenceDef const> sequences):
@@ -32,8 +32,8 @@ HelpOverlay::HelpOverlay(Keymap const& keymap, std::span<ChordSequenceDef const>
     std::size_t longestDesc = 0;
     for (auto const& e: _entries)
         longestDesc = std::max(longestDesc, e.help.size());
-    auto const content = kKeyColumn + static_cast<int>(longestDesc);
-    _width = std::max(content, static_cast<int>(kTitle.size())) + (2 * kPadding);
+    auto const content = KeyColumn + static_cast<int>(longestDesc);
+    _width = std::max(content, static_cast<int>(Title.size())) + (2 * Padding);
 }
 
 tui::Size HelpOverlay::preferredSize() const
@@ -56,19 +56,19 @@ void HelpOverlay::render(tui::Canvas& canvas)
 
     // Background + border with a title.
     canvas.clear(theme.dialogBackground);
-    canvas.drawBox(area, tui::BorderStyle::Rounded, boxStyle, kTitle, tui::TitleAlign::Left);
+    canvas.drawBox(area, tui::BorderStyle::Rounded, boxStyle, Title, tui::TitleAlign::Left);
 
     // One row per binding: "key   description".
     auto row = 1;
     for (auto const& e: _entries)
     {
-        canvas.putString(row, kPadding, std::string { e.key }, keyStyle);
-        canvas.putString(row, kPadding + kKeyColumn, std::string { e.help }, descStyle);
+        canvas.putString(row, Padding, std::string { e.key }, keyStyle);
+        canvas.putString(row, Padding + KeyColumn, std::string { e.help }, descStyle);
         ++row;
     }
 
     // Footer hint.
-    canvas.putString(row, kPadding, "press any key to close", hintStyle);
+    canvas.putString(row, Padding, "press any key to close", hintStyle);
 }
 
 tui::EventResult HelpOverlay::onEvent(tui::InputEvent const& event)

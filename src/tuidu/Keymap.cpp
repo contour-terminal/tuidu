@@ -8,7 +8,7 @@ namespace tuidu
 
 Keymap::Keymap()
 {
-    install(kDefaultKeymap);
+    install(DefaultKeymap);
 }
 
 Keymap::Keymap(std::span<KeyBindingDef const> defs)
