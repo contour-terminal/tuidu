@@ -11,16 +11,20 @@ add_library(tuidu-core STATIC
     SizeFormat.cpp
     SortMode.cpp
     Keymap.cpp
+    ChordRecognizer.cpp
     Search.cpp
     Columns.cpp
     ColorRules.cpp
     # Scanning
     Scanner.cpp
     ScanWorker.cpp
-    # UI: model adapter, theming, help, app
+    # Deletion
+    DeleteWorker.cpp
+    # UI: model adapter, theming, help, dialogs, app
     DiskUsageModel.cpp
     ThemeController.cpp
     HelpOverlay.cpp
+    DeleteProgressDialog.cpp
     App.cpp
 )
 
@@ -46,14 +50,17 @@ if(ENDO_TESTING)
         SizeFormat_test.cpp
         SortMode_test.cpp
         Keymap_test.cpp
+        ChordRecognizer_test.cpp
         Search_test.cpp
         Columns_test.cpp
         ColorRules_test.cpp
         Scanner_test.cpp
         ScanWorker_test.cpp
+        DeleteWorker_test.cpp
         ThemeController_test.cpp
         DiskUsageModel_test.cpp
         HelpOverlay_test.cpp
+        DeleteProgressDialog_test.cpp
         App_test.cpp
     )
     target_link_libraries(test-tuidu PRIVATE tuidu-core Catch2::Catch2)

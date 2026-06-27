@@ -106,10 +106,16 @@ void Tree::rebuildChildIndex(NodeId parent, NodeLess const& less)
     }
 
     // Children occupy the contiguous arena range [firstChild, firstChild + childCount).
+    // Deleted children are skipped so they vanish from the parent's view without disturbing
+    // the contiguous arena range or invalidating any NodeId.
     auto ids = std::vector<NodeId> {};
     ids.reserve(count);
     for (auto i = std::uint32_t { 0 }; i < count; ++i)
-        ids.push_back(parentNode.firstChild + i);
+    {
+        auto const child = static_cast<NodeId>(parentNode.firstChild + i);
+        if (!_nodes[child].isDeleted())
+            ids.push_back(child);
+    }
 
     std::ranges::sort(ids, [&](NodeId a, NodeId b) { return less(*this, a, b); });
 
@@ -118,7 +124,7 @@ void Tree::rebuildChildIndex(NodeId parent, NodeLess const& less)
     auto const offset = static_cast<std::uint32_t>(_childIndex.size());
     _childIndex.insert(_childIndex.end(), ids.begin(), ids.end());
     _childIndexOffset[parent] = offset;
-    _childIndexCount[parent] = count;
+    _childIndexCount[parent] = static_cast<std::uint32_t>(ids.size());
 }
 
 void Tree::propagateUp(NodeId id, std::int64_t size, std::int64_t blocks, std::uint64_t items)
@@ -129,6 +135,32 @@ void Tree::propagateUp(NodeId id, std::int64_t size, std::int64_t blocks, std::u
         node.aggSize += size;
         node.aggBlocks += blocks;
         node.itemCount += items;
+    }
+}
+
+void Tree::removeSubtree(NodeId id)
+{
+    if (id == InvalidNode || id == _root)
+        return;
+
+    auto& node = _nodes[id];
+    if (node.isDeleted())
+        return; // already removed; do not subtract its totals twice
+
+    // Capture the subtree totals before flagging, then subtract them from every ancestor so the
+    // parent chain's aggregates stay correct. The deleted node keeps its own (now irrelevant)
+    // aggregates; only ancestors are adjusted. Each subtraction is exact because every ancestor's
+    // aggregate includes this subtree's contribution.
+    auto const size = node.aggSize;
+    auto const blocks = node.aggBlocks;
+    auto const items = node.itemCount;
+    node.flags |= NodeFlag::Deleted;
+    for (auto cur = node.parent; cur != InvalidNode; cur = _nodes[cur].parent)
+    {
+        auto& ancestor = _nodes[cur];
+        ancestor.aggSize -= size;
+        ancestor.aggBlocks -= blocks;
+        ancestor.itemCount -= items;
     }
 }
 

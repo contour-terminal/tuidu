@@ -17,12 +17,15 @@
 #include <vector>
 
 #include <platform/MessageQueue.hpp>
+#include <platform/testing/InMemoryFileSystem.hpp>
 #include <platform/testing/MockFileInfoProvider.hpp>
 #include <tuidu/App.hpp>
+#include <tuidu/DeleteProgress.hpp>
 
 using namespace tuidu;
 using endo::platform::FileEntry;
 using endo::platform::MessageQueue;
+using endo::platform::testing::InMemoryFileSystem;
 using endo::platform::testing::MockFileInfoProvider;
 
 namespace
@@ -110,12 +113,14 @@ TEST_CASE("App: scans and quits via 'q', tree populated", "[app]")
     tui::Terminal terminal { std::move(mockOut) };
 
     MessageQueue<ScanProgress> progress;
+    MessageQueue<DeleteProgress> deleteProgress;
+    InMemoryFileSystem fs;
 
     AppConfig config;
     config.rootPath = ".";
     config.themeMode = ThemeMode::Dark; // deterministic, no terminal query
 
-    App app { terminal, source, provider, progress, config };
+    App app { terminal, source, provider, fs, progress, deleteProgress, config };
     source.setScanInFlight([&] { return app.scanInFlight(); });
     auto const rc = app.run();
 
@@ -135,10 +140,12 @@ TEST_CASE("App: 'j' then 'q' navigates without crashing", "[app]")
     auto mockOut = std::make_unique<tui::MockTerminalOutput>(80, 24);
     tui::Terminal terminal { std::move(mockOut) };
     MessageQueue<ScanProgress> progress;
+    MessageQueue<DeleteProgress> deleteProgress;
+    InMemoryFileSystem fs;
 
     AppConfig config;
     config.themeMode = ThemeMode::Dark;
-    App app { terminal, source, provider, progress, config };
+    App app { terminal, source, provider, fs, progress, deleteProgress, config };
     source.setScanInFlight([&] { return app.scanInFlight(); });
     CHECK(app.run() == 0);
     CHECK(app.tree()[app.tree().root()].aggSize == 300);
@@ -195,10 +202,12 @@ TEST_CASE("App: '?' opens the help overlay; any key closes it", "[app]")
     auto mockOut = std::make_unique<tui::MockTerminalOutput>(80, 24);
     tui::Terminal terminal { std::move(mockOut) };
     MessageQueue<ScanProgress> progress;
+    MessageQueue<DeleteProgress> deleteProgress;
+    InMemoryFileSystem fs;
 
     AppConfig config;
     config.themeMode = ThemeMode::Dark;
-    App app { terminal, source, provider, progress, config };
+    App app { terminal, source, provider, fs, progress, deleteProgress, config };
     appPtr = &app;
     source.scanInFlight = [&] {
         return app.scanInFlight();
@@ -214,6 +223,138 @@ TEST_CASE("App: '?' opens the help overlay; any key closes it", "[app]")
     (void) appPtr;
 }
 
+namespace
+{
+/// Drives an App through a scan, then a scripted `dd` delete, then `q`. It reports AgentReady
+/// while either the scan or the delete is in flight (so the App drains progress), and otherwise
+/// delivers the next scripted key. Deterministic — no fixed sleeps gate the assertions.
+class DeleteFlowSource: public tui::runtime::EventSource
+{
+  public:
+    std::function<bool()> scanInFlight;   ///< Wired to App::scanInFlight.
+    std::function<bool()> deleteInFlight; ///< Wired to App::deleteInFlight.
+
+    tui::runtime::WaitOutcome wait(int /*timeoutMs*/) override
+    {
+        if ((scanInFlight && scanInFlight()) || (deleteInFlight && deleteInFlight()))
+        {
+            std::this_thread::yield();
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            return tui::runtime::WaitOutcome { .agentReady = true };
+        }
+        switch (_step++)
+        {
+            case 0: return tui::runtime::WaitOutcome { .events = { keyChar(U'd') } };
+            case 1: return tui::runtime::WaitOutcome { .events = { keyChar(U'd') } };
+            case 2: return tui::runtime::WaitOutcome { .events = { keyChar(U'q') } };
+            default: return tui::runtime::WaitOutcome { .interrupted = true };
+        }
+    }
+
+  private:
+    int _step = 0;
+};
+} // namespace
+
+TEST_CASE("App: 'dd' deletes the selected item and updates the tree", "[app][delete]")
+{
+    MockFileInfoProvider provider;
+    provider.setEntries("/r", { file("a.txt", 100), file("b.txt", 200) });
+
+    // The filesystem the delete acts on must hold the same paths the tree exposes.
+    InMemoryFileSystem fs;
+    fs.addFile("/r/a.txt", "a");
+    fs.addFile("/r/b.txt", "bb");
+
+    DeleteFlowSource source;
+
+    auto mockOut = std::make_unique<tui::MockTerminalOutput>(80, 24);
+    tui::Terminal terminal { std::move(mockOut) };
+    MessageQueue<ScanProgress> progress;
+    MessageQueue<DeleteProgress> deleteProgress;
+
+    AppConfig config;
+    config.rootPath = "/r";
+    config.themeMode = ThemeMode::Dark;
+    App app { terminal, source, provider, fs, progress, deleteProgress, config };
+    source.scanInFlight = [&] {
+        return app.scanInFlight();
+    };
+    source.deleteInFlight = [&] {
+        return app.deleteInFlight();
+    };
+
+    CHECK(app.run() == 0);
+
+    // Size-desc default puts b.txt (200) at row 0, so `dd` removes it: it is gone from disk,
+    // gone from the model rows, and the root aggregate dropped by 200.
+    CHECK_FALSE(app.deleteInFlight());
+    CHECK_FALSE(fs.exists("/r/b.txt"));
+    CHECK(fs.exists("/r/a.txt"));
+    CHECK(app.model().rows().size() == 1);
+    CHECK(app.tree()[app.tree().root()].aggSize == 100);
+}
+
+TEST_CASE("App: a failed 'dd' delete leaves the tree unchanged", "[app][delete]")
+{
+    MockFileInfoProvider provider;
+    provider.setEntries("/r", { file("a.txt", 100), file("b.txt", 200) });
+
+    // Empty filesystem: the targeted path does not exist, so the delete reports an error and the
+    // tree must be left intact.
+    InMemoryFileSystem fs;
+
+    DeleteFlowSource source;
+
+    auto mockOut = std::make_unique<tui::MockTerminalOutput>(80, 24);
+    tui::Terminal terminal { std::move(mockOut) };
+    MessageQueue<ScanProgress> progress;
+    MessageQueue<DeleteProgress> deleteProgress;
+
+    AppConfig config;
+    config.rootPath = "/r";
+    config.themeMode = ThemeMode::Dark;
+    App app { terminal, source, provider, fs, progress, deleteProgress, config };
+    source.scanInFlight = [&] {
+        return app.scanInFlight();
+    };
+    source.deleteInFlight = [&] {
+        return app.deleteInFlight();
+    };
+
+    CHECK(app.run() == 0);
+
+    CHECK_FALSE(app.deleteInFlight());
+    CHECK(app.model().rows().size() == 2);               // both items still present
+    CHECK(app.tree()[app.tree().root()].aggSize == 300); // aggregate unchanged
+}
+
+TEST_CASE("App: 'yy' copies the selected item's path to the clipboard", "[app][yank]")
+{
+    MockFileInfoProvider provider;
+    provider.setEntries("/r", { file("a.txt", 100), file("b.txt", 200) });
+
+    // 'y' arms the chord, the second 'y' completes it (copy), then 'q' quits.
+    ScanThenKeysSource source { { keyChar(U'y'), keyChar(U'y'), keyChar(U'q') } };
+
+    auto mockOut = std::make_unique<tui::MockTerminalOutput>(80, 24);
+    auto* mockOutRaw = mockOut.get();
+    tui::Terminal terminal { std::move(mockOut) };
+    MessageQueue<ScanProgress> progress;
+    MessageQueue<DeleteProgress> deleteProgress;
+    InMemoryFileSystem fs;
+
+    AppConfig config;
+    config.rootPath = "/r";
+    config.themeMode = ThemeMode::Dark;
+    App app { terminal, source, provider, fs, progress, deleteProgress, config };
+    source.setScanInFlight([&] { return app.scanInFlight(); });
+    CHECK(app.run() == 0);
+
+    // Size-desc default puts b.txt (200) at row 0, so its full path is what gets yanked.
+    CHECK(mockOutRaw->clipboardText() == "/r/b.txt");
+}
+
 TEST_CASE("App: descend into a directory then quit", "[app]")
 {
     MockFileInfoProvider provider;
@@ -226,10 +367,12 @@ TEST_CASE("App: descend into a directory then quit", "[app]")
     auto mockOut = std::make_unique<tui::MockTerminalOutput>(80, 24);
     tui::Terminal terminal { std::move(mockOut) };
     MessageQueue<ScanProgress> progress;
+    MessageQueue<DeleteProgress> deleteProgress;
+    InMemoryFileSystem fs;
 
     AppConfig config;
     config.themeMode = ThemeMode::Dark;
-    App app { terminal, source, provider, progress, config };
+    App app { terminal, source, provider, fs, progress, deleteProgress, config };
     source.setScanInFlight([&] { return app.scanInFlight(); });
     CHECK(app.run() == 0);
     // After descending into sub, the model's current node is sub.

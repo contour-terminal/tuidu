@@ -1,0 +1,64 @@
+name: Clang-Tidy
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+concurrency:
+  group: clang-tidy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  clang-tidy:
+    runs-on: ubuntu-latest
+    name: "clang-tidy (full project)"
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ccache-clang-tidy
+        max-size: 256M
+
+    - name: Install CMake
+      uses: ssrobins/install-cmake@v1
+
+    - name: Install Ninja
+      uses: seanmiddleditch/gha-setup-ninja@master
+
+    - name: Install LLVM 21 + clang-tidy
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 21
+        sudo apt-get install -y clang-tidy-21
+        # enable_clang_tidy() looks for an unversioned `clang-tidy` on PATH.
+        sudo ln -sf "$(command -v clang-tidy-21)" /usr/local/bin/clang-tidy
+
+    - name: Get vendored libraries (crispy)
+      run: python3 scripts/get_contour_dirs.py
+
+    # A dedicated configuration with clang-tidy enabled on every first-party target.
+    # The build itself is the gate: .clang-tidy sets WarningsAsErrors, so any finding
+    # (across src/tuidu plus the vendored tui/platform/coro) fails the job.
+    - name: Configure CMake (clang-tidy enabled)
+      run: >
+        cmake -B build/clang-tidy
+        -GNinja
+        -DCMAKE_C_COMPILER=clang-21
+        -DCMAKE_CXX_COMPILER=clang++-21
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo
+        -DENABLE_CLANG_TIDY=ON
+        -DTUIDU_TESTING=ON
+        -S ${{ github.workspace }}
+
+    # `-k 0` keeps Ninja going after the first clang-tidy failure so a single run reports every
+    # finding across the project, rather than stopping at the first offending translation unit.
+    - name: Build (runs clang-tidy on every translation unit)
+      run: cmake --build build/clang-tidy -- -k 0

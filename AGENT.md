@@ -142,6 +142,26 @@ must be a git repository before the first configure.
 
 Run the app: `./build/clang-debug/src/tuidu/tuidu [path]` (defaults to the current directory).
 
+### Windows (clang-cl)
+
+Windows uses the `clangcl-debug` / `clangcl-release` presets (Ninja + `clang-cl`). Because Ninja
+needs the MSVC environment (INCLUDE/LIB for the MSVC STL + Windows SDK), run from an **"x64 Native
+Tools Command Prompt for VS"**, or import the dev environment first in PowerShell:
+
+```powershell
+& 'C:\Program Files\Microsoft Visual Studio\18\Professional\Common7\Tools\Launch-VsDevShell.ps1' -Arch amd64 -SkipAutomaticLocation
+cmake --preset clangcl-debug
+cmake --build --preset clangcl-debug
+ctest --preset clangcl-debug
+.\build\clangcl-debug\src\tuidu\tuidu.exe [path]
+```
+
+The Windows code paths (`WindowsFileInfoProvider`, the `*Win32` terminal I/O, `TerminalEventSourceWin32`,
+`WindowsWakeup`) are selected by `if(WIN32)` in CMake and `#ifdef _WIN32` guards. Sanitizers,
+coverage, and clang-tidy are not wired up for the clang-cl presets (Clang/GCC-only by design).
+`tuidu` is a full-screen console app: it requires a real console and exits with
+`failed to initialize terminal` if stdin/stdout are redirected.
+
 ---
 
 ## Testing

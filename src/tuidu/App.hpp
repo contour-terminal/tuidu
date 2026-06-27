@@ -12,12 +12,18 @@
 #include <tui/runtime/TuiRuntime.hpp>
 
 #include <mutex>
+#include <optional>
 #include <string>
 
 #include <coro/Task.hpp>
 #include <platform/FileInfoProvider.hpp>
+#include <platform/FileSystem.hpp>
 #include <platform/MessageQueue.hpp>
 #include <platform/Wakeup.hpp>
+#include <tuidu/ChordRecognizer.hpp>
+#include <tuidu/DeleteProgress.hpp>
+#include <tuidu/DeleteProgressDialog.hpp>
+#include <tuidu/DeleteWorker.hpp>
 #include <tuidu/DiskUsageModel.hpp>
 #include <tuidu/HelpOverlay.hpp>
 #include <tuidu/Keymap.hpp>
@@ -48,12 +54,17 @@ class App
     /// @param terminal The terminal (real or mock-backed; not owned, must outlive the App).
     /// @param eventSource The runtime's wait source (real or scripted; not owned).
     /// @param provider The directory-listing seam (not owned).
-    /// @param progress The worker → UI channel (not owned; its wakeup must back @p eventSource).
+    /// @param fileSystem The filesystem seam used to delete items (not owned).
+    /// @param progress The scan worker → UI channel (not owned; its wakeup must back @p eventSource).
+    /// @param deleteProgress The delete worker → UI channel (not owned; its wakeup must back
+    ///        @p eventSource, so a delete-progress push wakes the UI loop).
     /// @param config Run configuration.
     App(tui::Terminal& terminal,
         tui::runtime::EventSource& eventSource,
         endo::platform::FileInfoProvider const& provider,
+        endo::platform::FileSystem const& fileSystem,
         endo::platform::MessageQueue<ScanProgress>& progress,
+        endo::platform::MessageQueue<DeleteProgress>& deleteProgress,
         AppConfig config);
 
     /// Runs the application to completion (until the user quits).
@@ -71,6 +82,9 @@ class App
 
     /// @return true while the help overlay is shown (for inspection in tests).
     [[nodiscard]] bool helpVisible() const noexcept { return _helpVisible; }
+
+    /// @return true while a delete is running (for test synchronization).
+    [[nodiscard]] bool deleteInFlight() const noexcept { return _deleteInFlight; }
 
   private:
     /// The root coroutine flow: drain progress, draw, await activity, dispatch keys.
@@ -90,28 +104,53 @@ class App
     /// @param visible Whether the help overlay should be shown.
     void setHelpVisible(bool visible);
 
+    /// Shows or hides the centered delete-progress dialog.
+    /// @param visible Whether the dialog should be shown.
+    void setDeleteDialogVisible(bool visible);
+
+    /// Starts deleting the currently-selected item (the `dd` chord target), spawning a
+    /// @ref DeleteWorker and showing the progress dialog. No-op if nothing is selected, the
+    /// selection is the root, or a delete is already running.
+    void beginDelete();
+
+    /// Folds queued delete-progress messages into the dialog; on completion, removes the node
+    /// from the tree (unless the delete was cancelled or failed) and restores the browser.
+    void drainDeleteProgress();
+
+    /// Copies the currently-selected item's full path to the system clipboard (the `yy` chord),
+    /// via the terminal's OSC 52 clipboard. No-op if nothing is selected.
+    void yankSelectedPath();
+
     tui::Terminal& _terminal;                              ///< Terminal (injected).
     tui::runtime::EventSource& _eventSource;               ///< Wait source (injected).
     endo::platform::FileInfoProvider const& _provider;     ///< Directory-listing seam (injected).
-    endo::platform::MessageQueue<ScanProgress>& _progress; ///< Worker → UI channel (injected).
-    AppConfig _config;                                     ///< Run configuration.
+    endo::platform::FileSystem const& _fileSystem;         ///< Filesystem seam for deletion (injected).
+    endo::platform::MessageQueue<ScanProgress>& _progress; ///< Scan worker → UI channel (injected).
+    endo::platform::MessageQueue<DeleteProgress>& _deleteProgress; ///< Delete worker → UI channel (injected).
+    AppConfig _config;                                             ///< Run configuration.
 
-    Tree _tree;                        ///< The disk-usage tree.
-    DiskUsageModel _model;             ///< Adapts the tree to the generic view.
-    ThemeController _theme;            ///< Dark/light theme controller.
-    Keymap _keymap;                    ///< Key → Action bindings.
-    tui::Screen _screen;               ///< The render surface.
-    tui::TreeTableView _browser;       ///< The generic browser component.
-    tui::StatusBar _statusBar;         ///< The status line.
-    HelpOverlay _help;                 ///< The help panel (shown on '?').
-    tui::runtime::TuiRuntime _runtime; ///< The coroutine scheduler.
+    Tree _tree;                         ///< The disk-usage tree.
+    DiskUsageModel _model;              ///< Adapts the tree to the generic view.
+    ThemeController _theme;             ///< Dark/light theme controller.
+    Keymap _keymap;                     ///< Key → Action bindings.
+    ChordRecognizer _chords;            ///< Multi-key chord (e.g. `dd`) recognizer.
+    tui::Screen _screen;                ///< The render surface.
+    tui::TreeTableView _browser;        ///< The generic browser component.
+    tui::StatusBar _statusBar;          ///< The status line.
+    HelpOverlay _help;                  ///< The help panel (shown on '?').
+    DeleteProgressDialog _deleteDialog; ///< The delete-progress overlay (shown during `dd`).
+    tui::runtime::TuiRuntime _runtime;  ///< The coroutine scheduler.
 
-    std::mutex _treeMutex;           ///< Guards _tree between the scan worker and the UI.
-    bool _scanInFlight = false;      ///< True while a scan is running.
-    bool _helpVisible = false;       ///< Whether the help overlay is shown.
-    bool _dirty = true;              ///< Whether the screen needs a redraw (starts true).
-    std::uint64_t _scannedItems = 0; ///< Latest scanned-item total (status).
-    std::int64_t _scannedBytes = 0;  ///< Latest scanned-byte total (status).
+    std::optional<DeleteWorker> _deleteWorker; ///< The active delete worker (empty when idle).
+
+    std::mutex _treeMutex;              ///< Guards _tree between the scan worker and the UI.
+    bool _scanInFlight = false;         ///< True while a scan is running.
+    bool _helpVisible = false;          ///< Whether the help overlay is shown.
+    bool _deleteInFlight = false;       ///< True while a delete is running.
+    NodeId _deletingNode = InvalidNode; ///< The node being deleted (removed from the tree on success).
+    bool _dirty = true;                 ///< Whether the screen needs a redraw (starts true).
+    std::uint64_t _scannedItems = 0;    ///< Latest scanned-item total (status).
+    std::int64_t _scannedBytes = 0;     ///< Latest scanned-byte total (status).
 
     static constexpr int kScanPollMs = 60;   ///< Poll interval while a scan streams progress.
     static constexpr int kIdlePollMs = 1000; ///< Idle poll interval (input/scan wakeups preempt it).

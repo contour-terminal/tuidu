@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 #include <tui/InputEvent.hpp>
+#include <tui/KeyCode.hpp>
 
+#include <algorithm>
 #include <format>
+#include <string>
+#include <variant>
 #include <vector>
 
 #include <tuidu/App.hpp>
@@ -28,12 +32,16 @@ namespace
 App::App(tui::Terminal& terminal,
          tui::runtime::EventSource& eventSource,
          endo::platform::FileInfoProvider const& provider,
+         endo::platform::FileSystem const& fileSystem,
          endo::platform::MessageQueue<ScanProgress>& progress,
+         endo::platform::MessageQueue<DeleteProgress>& deleteProgress,
          AppConfig config):
     _terminal(terminal),
     _eventSource(eventSource),
     _provider(provider),
+    _fileSystem(fileSystem),
     _progress(progress),
+    _deleteProgress(deleteProgress),
     _config(std::move(config)),
     _model(_tree),
     _theme(_config.themeMode),
@@ -96,6 +104,123 @@ void App::setHelpVisible(bool visible)
     _dirty = true;
 }
 
+void App::setDeleteDialogVisible(bool visible)
+{
+    if (visible)
+    {
+        auto const size = _deleteDialog.preferredSize();
+        auto const x = std::max(0, (_screen.cols() - size.width) / 2);
+        auto const y = std::max(0, (_screen.rows() - size.height) / 2);
+        _deleteDialog.setArea(tui::Rect { .x = x, .y = y, .width = size.width, .height = size.height });
+        _screen.showOverlay(_deleteDialog, tui::Point { .x = x, .y = y });
+    }
+    else
+    {
+        _screen.hideOverlay(_deleteDialog);
+    }
+    _screen.invalidate();
+    _dirty = true;
+}
+
+void App::beginDelete()
+{
+    // Precondition: called from dispatch(), which already holds _treeMutex — so we read the tree
+    // directly here and must not re-lock (the mutex is non-recursive).
+    if (_deleteInFlight)
+        return;
+
+    auto valid = false;
+    auto const rowId = _browser.cursorRow(valid);
+    if (!valid)
+        return;
+
+    auto const id = static_cast<NodeId>(rowId);
+    if (id == _tree.root() || id == InvalidNode)
+        return; // never delete the scan root itself
+
+    auto const& node = _tree[id];
+    auto const path = _tree.fullPath(id);
+    auto const total = node.itemCount;
+    // Recurse only into a real directory; a symlink (even to a directory) is unlinked, not followed.
+    auto const mode = (node.isDir() && !node.isSymlink()) ? DeleteMode::Recursive : DeleteMode::SingleEntry;
+
+    _deletingNode = id;
+    _deleteInFlight = true;
+    _deleteDialog.setTarget(path);
+    _deleteDialog.setProgress(0.0F);
+    _deleteDialog.setStatus(std::format("Deleting 0 / {}", total));
+
+    _deleteWorker.emplace(_fileSystem, _deleteProgress);
+    _deleteWorker->start(path, total, mode);
+    setDeleteDialogVisible(true);
+}
+
+void App::yankSelectedPath()
+{
+    // Precondition: called from dispatch(), which already holds _treeMutex.
+    auto valid = false;
+    auto const rowId = _browser.cursorRow(valid);
+    if (!valid)
+        return;
+
+    auto const path = _tree.fullPath(static_cast<NodeId>(rowId));
+    // OSC 52 copy through the terminal — works over SSH and across platforms.
+    _terminal.output().copyToClipboard(path);
+}
+
+void App::drainDeleteProgress()
+{
+    if (!_deleteInFlight)
+        return;
+
+    std::vector<DeleteProgress> batch;
+    _deleteProgress.drainTo(batch);
+    if (batch.empty())
+        return;
+
+    auto finished = false;
+    auto failed = false;
+    std::string failure;
+    for (auto const& p: batch)
+    {
+        auto const fraction =
+            (p.total != 0) ? static_cast<float>(p.deleted) / static_cast<float>(p.total) : 1.0F;
+        _deleteDialog.setProgress(fraction);
+        _deleteDialog.setStatus(std::format("Deleting {} / {}", p.deleted, p.total));
+        if (p.done)
+        {
+            finished = true;
+            if (p.error.has_value())
+            {
+                failed = true;
+                failure = *p.error;
+            }
+            else if (!p.cancelled)
+            {
+                // Remove the now-deleted subtree and roll its size back out of the ancestors.
+                std::scoped_lock const lock { _treeMutex };
+                _tree.removeSubtree(_deletingNode);
+                _model.resort();
+                _browser.moveCursor(0); // re-clamp the cursor onto the shrunken row set
+            }
+        }
+    }
+
+    if (finished)
+    {
+        _deleteInFlight = false;
+        _deletingNode = InvalidNode;
+        setDeleteDialogVisible(false);
+    }
+
+    if (failed)
+        _statusBar.setLeftText(std::format("delete failed: {}", failure));
+    else
+        refreshStatus();
+    _screen.invalidate();
+    _dirty = true;
+}
+
 void App::applyProgress()
 {
     std::vector<ScanProgress> batch;
@@ -146,6 +271,8 @@ bool App::dispatch(Action action)
             _model.setSizeMode(_model.sizeMode() == SizeMode::Apparent ? SizeMode::Disk : SizeMode::Apparent);
             break;
         case Action::Help: setHelpVisible(!_helpVisible); break;
+        case Action::Delete: beginDelete(); break;
+        case Action::YankPath: yankSelectedPath(); break;
         case Action::None:
         case Action::ToggleHidden:
         case Action::SearchOpen:
@@ -165,6 +292,7 @@ endo::coro::Task<void> App::mainFlow()
     while (running)
     {
         applyProgress();
+        drainDeleteProgress();
 
         // Render only when something changed. The Screen diff-renders, but skipping a
         // no-op draw entirely avoids burning CPU on idle wakeups.
@@ -197,13 +325,31 @@ endo::coro::Task<void> App::mainFlow()
 
         if (auto const* key = std::get_if<tui::KeyEvent>(&event))
         {
+            // While a delete runs, Esc cancels it; every other key is swallowed so the browser
+            // beneath stays inert until the delete finishes.
+            if (_deleteInFlight)
+            {
+                if (key->key == tui::KeyCode::Escape && _deleteWorker.has_value())
+                    _deleteWorker->requestStop();
+                continue;
+            }
+
             // While the help overlay is up, any key dismisses it and is otherwise swallowed.
             if (_helpVisible)
             {
                 setHelpVisible(false);
                 continue;
             }
-            if (auto const action = _keymap.lookup(*key); action != Action::None)
+
+            // Feed the key to the chord recognizer first (e.g. `dd`). A pending lead key is
+            // swallowed until its completing press; a completed chord dispatches its action;
+            // anything else passes through to the single-key keymap.
+            auto const chord = _chords.feed(*key);
+            if (chord.outcome == ChordOutcome::Pending)
+                continue;
+            auto const action =
+                (chord.outcome == ChordOutcome::Completed) ? chord.action : _keymap.lookup(*key);
+            if (action != Action::None)
             {
                 if (!dispatch(action))
                 {
@@ -224,8 +370,18 @@ endo::coro::Task<void> App::mainFlow()
         }
         else
         {
-            // Resize / mouse / focus: let the component tree handle it and redraw.
-            (void) _screen.dispatchEvent(event);
+            // Mouse events drive the browser (click to select, double-click to descend, wheel to
+            // scroll). While a modal overlay is up, swallow them so a click cannot reach the
+            // browser beneath; resize/focus still apply.
+            if (std::holds_alternative<tui::MouseEvent>(event) && (_deleteInFlight || _helpVisible))
+                continue;
+
+            // Resize / mouse / focus: let the component tree handle it and redraw. The browser
+            // reads the tree while navigating, so hold the tree mutex against the scan worker.
+            {
+                std::scoped_lock const lock { _treeMutex };
+                (void) _screen.dispatchEvent(event);
+            }
             _dirty = true;
         }
     }

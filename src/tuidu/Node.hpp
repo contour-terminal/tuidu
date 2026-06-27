@@ -32,6 +32,7 @@ enum class NodeFlag : std::uint8_t
     OtherDevice = 1 << 3, ///< Child crossed a filesystem boundary; excluded from the aggregate.
     HardlinkDup = 1 << 4, ///< (dev,ino) already counted; size deduplicated to 0 in the aggregate.
     Excluded = 1 << 5,    ///< Matched an exclude pattern.
+    Deleted = 1 << 6,     ///< Removed from disk; excluded from its parent's child index and aggregates.
 };
 
 /// Bitwise OR of two flag sets.
@@ -109,6 +110,9 @@ struct Node
 
     /// @return true if this node's subtree could not be fully read.
     [[nodiscard]] constexpr bool hasReadError() const noexcept { return hasFlag(flags, NodeFlag::ReadError); }
+
+    /// @return true if this node has been removed from disk (and from its parent's view).
+    [[nodiscard]] constexpr bool isDeleted() const noexcept { return hasFlag(flags, NodeFlag::Deleted); }
 };
 
 } // namespace tuidu

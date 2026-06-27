@@ -6,8 +6,10 @@
 /// everything else takes injected abstractions.
 
 #include <platform/MessageQueue.hpp>
+#include <platform/NativeFileSystem.hpp>
 #include <platform/Wakeup.hpp>
 #include <tuidu/App.hpp>
+#include <tuidu/DeleteProgress.hpp>
 #include <tuidu/ScanProgress.hpp>
 
 #if !defined(_WIN32)
@@ -48,12 +50,15 @@ int main(int argc, char const* argv[])
     config.rootPath = (args.size() > 1) ? std::string { args[1] } : std::string { "." };
 
     auto provider = makeFileInfoProvider();
+    endo::platform::NativeFileSystem fileSystem;
 
-    // Worker → UI channel; its wakeup is what the event source selects on so a scan-progress
-    // push wakes the UI loop (surfacing as ActivityKind::AgentReady).
+    // Worker → UI channels; their shared wakeup is what the event source selects on so a scan- or
+    // delete-progress push wakes the UI loop (surfacing as ActivityKind::AgentReady).
     endo::platform::Wakeup scanWakeup;
     endo::platform::MessageQueue<tuidu::ScanProgress> progress;
     progress.setWakeup(&scanWakeup);
+    endo::platform::MessageQueue<tuidu::DeleteProgress> deleteProgress;
+    deleteProgress.setWakeup(&scanWakeup);
 
     tui::Terminal terminal;
     if (auto const init = terminal.initialize(); !init)
@@ -64,7 +69,7 @@ int main(int argc, char const* argv[])
 
     tui::runtime::TerminalEventSource eventSource { terminal, &scanWakeup };
 
-    auto app = tuidu::App { terminal, eventSource, *provider, progress, config };
+    auto app = tuidu::App { terminal, eventSource, *provider, fileSystem, progress, deleteProgress, config };
     auto const rc = app.run();
 
     terminal.shutdown();
