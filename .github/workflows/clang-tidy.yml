@@ -58,5 +58,7 @@ jobs:
         -DTUIDU_TESTING=ON
         -S ${{ github.workspace }}
 
+    # `-k 0` keeps Ninja going after the first clang-tidy failure so a single run reports every
+    # finding across the project, rather than stopping at the first offending translation unit.
     - name: Build (runs clang-tidy on every translation unit)
-      run: cmake --build build/clang-tidy
+      run: cmake --build build/clang-tidy -- -k 0

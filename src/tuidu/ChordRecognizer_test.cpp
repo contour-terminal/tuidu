@@ -26,7 +26,7 @@ tui::KeyEvent keyChar(char32_t c)
 /// A manually-advanced clock so the timeout is exercised deterministically (no real sleeps).
 struct FakeClock
 {
-    std::chrono::steady_clock::time_point now {};
+    std::chrono::steady_clock::time_point now = std::chrono::steady_clock::time_point::min();
 
     [[nodiscard]] auto operator()() const { return now; }
 };
