@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <format>
 #include <string>
+#include <variant>
 #include <vector>
 
 #include <tuidu/App.hpp>
@@ -369,8 +370,18 @@ endo::coro::Task<void> App::mainFlow()
         }
         else
         {
-            // Resize / mouse / focus: let the component tree handle it and redraw.
-            (void) _screen.dispatchEvent(event);
+            // Mouse events drive the browser (click to select, double-click to descend, wheel to
+            // scroll). While a modal overlay is up, swallow them so a click cannot reach the
+            // browser beneath; resize/focus still apply.
+            if (std::holds_alternative<tui::MouseEvent>(event) && (_deleteInFlight || _helpVisible))
+                continue;
+
+            // Resize / mouse / focus: let the component tree handle it and redraw. The browser
+            // reads the tree while navigating, so hold the tree mutex against the scan worker.
+            {
+                std::scoped_lock const lock { _treeMutex };
+                (void) _screen.dispatchEvent(event);
+            }
             _dirty = true;
         }
     }
