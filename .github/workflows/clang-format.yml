@@ -1,0 +1,38 @@
+name: Clang-Format
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+concurrency:
+  group: clang-format-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+    name: "clang-format (full project)"
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install LLVM 21 + clang-format
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 21
+        sudo apt-get install -y clang-format-21
+        # Pin the unversioned name so .clang-format is applied by a known version.
+        sudo ln -sf "$(command -v clang-format-21)" /usr/local/bin/clang-format
+
+    # The first-party application plus the vendored coro/platform/tui libraries are
+    # subject to .clang-format. The auto-fetched `crispy` tree (gitignored) is excluded
+    # by only checking files tracked in git under src/.
+    - name: Check formatting
+      run: |
+        mapfile -t files < <(git ls-files 'src/**/*.cpp' 'src/**/*.hpp' 'src/**/*.h' 'src/**/*.cc' \
+          | grep -v '^src/crispy/')
+        echo "Checking ${#files[@]} files with $(clang-format --version)"
+        clang-format --dry-run --Werror "${files[@]}"
