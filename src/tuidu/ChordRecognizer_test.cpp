@@ -36,9 +36,7 @@ struct FakeClock
 TEST_CASE("ChordRecognizer: dd within the timeout completes to Delete", "[chord]")
 {
     auto clock = FakeClock {};
-    auto recognizer = ChordRecognizer { kChordSequences, 500ms, [&clock] {
-                                           return clock.now;
-                                       } };
+    auto recognizer = ChordRecognizer { kChordSequences, 500ms, [&clock] { return clock.now; } };
 
     auto const lead = recognizer.feed(keyChar(U'd'));
     CHECK(lead.outcome == ChordOutcome::Pending);
@@ -54,9 +52,7 @@ TEST_CASE("ChordRecognizer: dd within the timeout completes to Delete", "[chord]
 TEST_CASE("ChordRecognizer: a non-completing key passes through and is not swallowed", "[chord]")
 {
     auto clock = FakeClock {};
-    auto recognizer = ChordRecognizer { kChordSequences, 500ms, [&clock] {
-                                           return clock.now;
-                                       } };
+    auto recognizer = ChordRecognizer { kChordSequences, 500ms, [&clock] { return clock.now; } };
 
     CHECK(recognizer.feed(keyChar(U'd')).outcome == ChordOutcome::Pending);
 
@@ -70,9 +66,7 @@ TEST_CASE("ChordRecognizer: a non-completing key passes through and is not swall
 TEST_CASE("ChordRecognizer: a second 'd' after the timeout does not delete, it re-arms", "[chord]")
 {
     auto clock = FakeClock {};
-    auto recognizer = ChordRecognizer { kChordSequences, 500ms, [&clock] {
-                                           return clock.now;
-                                       } };
+    auto recognizer = ChordRecognizer { kChordSequences, 500ms, [&clock] { return clock.now; } };
 
     CHECK(recognizer.feed(keyChar(U'd')).outcome == ChordOutcome::Pending);
 

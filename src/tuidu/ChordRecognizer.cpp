@@ -11,9 +11,8 @@ namespace tuidu
 ChordRecognizer::ChordRecognizer(std::span<ChordSequenceDef const> sequences,
                                  std::chrono::milliseconds timeout,
                                  Clock clock):
-    _timeout(timeout), _clock(clock ? std::move(clock) : Clock { [] {
-        return std::chrono::steady_clock::now();
-    } })
+    _timeout(timeout),
+    _clock(clock ? std::move(clock) : Clock { [] { return std::chrono::steady_clock::now(); } })
 {
     _sequences.reserve(sequences.size());
     for (auto const& def: sequences)
