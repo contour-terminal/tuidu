@@ -3,6 +3,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <string>
 
 #include <tuidu/Action.hpp>
@@ -68,6 +69,32 @@ TEST_CASE("DiskUsageModel: cellText delegates to the column formatters", "[model
     auto const nameCol = columns().size() - 1;
     CHECK(model.cellText(rows[0], nameCol) == "big/");
     CHECK(model.cellText(rows[1], nameCol) == "small.txt");
+}
+
+TEST_CASE("DiskUsageModel: the bar column is filled proportionally", "[model]")
+{
+    ModelFixture f;
+    DiskUsageModel model(f.tree);
+
+    // The bar column sits between Size and %; it is column index 1 and is 12 cells wide.
+    constexpr std::size_t barCol = 1;
+    auto const barWidth = static_cast<int>(columns()[barCol].width);
+    REQUIRE(barWidth == 12);
+
+    // Default sort is "Size ↓": big (200/300) before small (100/300) of the parent.
+    auto const rows = model.rows();
+    REQUIRE(rows.size() == 2);
+
+    auto const bigBar = model.cellText(rows[0], barCol);
+    auto const smallBar = model.cellText(rows[1], barCol);
+
+    // The bar fills its full column width (no longer empty).
+    CHECK(bigBar.size() == static_cast<std::size_t>(barWidth));
+    CHECK(smallBar.size() == static_cast<std::size_t>(barWidth));
+
+    // round(200/300 * 12) = 8 filled; round(100/300 * 12) = 4 filled.
+    CHECK(std::ranges::count(bigBar, '#') == 8);
+    CHECK(std::ranges::count(smallBar, '#') == 4);
 }
 
 TEST_CASE("DiskUsageModel: descend and ascend change the current node", "[model]")

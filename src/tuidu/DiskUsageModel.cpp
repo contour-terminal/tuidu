@@ -60,7 +60,9 @@ std::string DiskUsageModel::cellText(tui::RowId row, std::size_t column) const
     auto const cols = tuidu::columns();
     if (column >= cols.size())
         return {};
-    return cols[column].format(renderCtx(static_cast<NodeId>(row)));
+    auto ctx = renderCtx(static_cast<NodeId>(row));
+    ctx.barWidth = cols[column].width; // bar fills its configured column width
+    return cols[column].format(ctx);
 }
 
 tui::RowStyle DiskUsageModel::rowStyle(tui::RowId row, bool selected) const
