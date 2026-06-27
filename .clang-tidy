@@ -68,7 +68,7 @@ Checks: >-
 WarningsAsErrors: >-
   *
 UseColor: true
-HeaderFilterRegex: 'src/(CoreVM|endo-language|shell|tui|agent|dap|editor-protocol|lsp|platform|http)/[^.]'
+HeaderFilterRegex: 'src/(tuidu|tui|platform)/[^.]'
 FormatStyle:     none
 CheckOptions:
   - key:             bugprone-easily-swappable-parameters.MinimumLength
