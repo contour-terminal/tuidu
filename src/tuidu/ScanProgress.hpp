@@ -31,6 +31,7 @@ struct ScanProgress
     std::int64_t scannedBytes = 0;          ///< Running total of apparent bytes scanned so far.
     std::optional<std::string> currentPath; ///< Path currently being scanned (for the status line).
     bool done = false;                      ///< True on the final message when the scan finishes.
+    std::optional<std::string> error {};    ///< Set on the final message if the scan aborted with an error.
 };
 
 } // namespace tuidu

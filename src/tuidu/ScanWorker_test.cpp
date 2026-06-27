@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -96,6 +97,37 @@ TEST_CASE("ScanWorker: requestStop cancels and still emits done", "[scanworker]"
     auto const messages = waitForDone(queue);
     REQUIRE_FALSE(messages.empty());
     CHECK(messages.back().done);
+}
+
+TEST_CASE("ScanWorker: a provider exception is reported, not fatal", "[scanworker]")
+{
+    // A provider that throws (e.g. the real Windows provider hitting an unrepresentable
+    // filename) must not let the exception escape the worker thread — that would call
+    // std::terminate and kill the process with no diagnostic. The worker must instead emit a
+    // final done message carrying the error text so the UI can surface it.
+    struct ThrowingProvider final: endo::platform::FileInfoProvider
+    {
+        [[nodiscard]] std::vector<FileEntry> listDirectory(std::string const& /*path*/) const override
+        {
+            throw std::runtime_error("boom: unrepresentable filename");
+        }
+    };
+
+    ThrowingProvider provider;
+    Tree tree;
+    auto root = tree.createRoot("/r");
+    tree.at(root).dev = 1;
+
+    MessageQueue<ScanProgress> queue;
+    std::mutex treeMutex;
+    ScanWorker worker(provider, tree, queue, ScanOptions {}, treeMutex);
+    worker.start(root);
+
+    auto const messages = waitForDone(queue);
+    REQUIRE_FALSE(messages.empty());
+    CHECK(messages.back().done);
+    REQUIRE(messages.back().error.has_value());
+    CHECK(messages.back().error->find("boom") != std::string::npos);
 }
 
 TEST_CASE("ScanWorker: destructor joins a running worker", "[scanworker]")

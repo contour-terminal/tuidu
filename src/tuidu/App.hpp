@@ -90,6 +90,10 @@ class App
     /// @return true while a delete is running (for test synchronization).
     [[nodiscard]] bool deleteInFlight() const noexcept { return _deleteInFlight; }
 
+    /// @return The error that aborted the scan, if any (empty when the scan succeeded or is
+    ///         still running). Surfaced in the status bar and printed on exit.
+    [[nodiscard]] std::optional<std::string> const& scanError() const noexcept { return _scanError; }
+
   private:
     /// The root coroutine flow: drain progress, draw, await activity, dispatch keys.
     [[nodiscard]] endo::coro::Task<void> mainFlow();
@@ -147,14 +151,15 @@ class App
 
     std::optional<DeleteWorker> _deleteWorker; ///< The active delete worker (empty when idle).
 
-    std::mutex _treeMutex;              ///< Guards _tree between the scan worker and the UI.
-    bool _scanInFlight = false;         ///< True while a scan is running.
-    bool _helpVisible = false;          ///< Whether the help overlay is shown.
-    bool _deleteInFlight = false;       ///< True while a delete is running.
-    NodeId _deletingNode = InvalidNode; ///< The node being deleted (removed from the tree on success).
-    bool _dirty = true;                 ///< Whether the screen needs a redraw (starts true).
-    std::uint64_t _scannedItems = 0;    ///< Latest scanned-item total (status).
-    std::int64_t _scannedBytes = 0;     ///< Latest scanned-byte total (status).
+    std::mutex _treeMutex;                 ///< Guards _tree between the scan worker and the UI.
+    bool _scanInFlight = false;            ///< True while a scan is running.
+    bool _helpVisible = false;             ///< Whether the help overlay is shown.
+    bool _deleteInFlight = false;          ///< True while a delete is running.
+    NodeId _deletingNode = InvalidNode;    ///< The node being deleted (removed from the tree on success).
+    bool _dirty = true;                    ///< Whether the screen needs a redraw (starts true).
+    std::uint64_t _scannedItems = 0;       ///< Latest scanned-item total (status).
+    std::int64_t _scannedBytes = 0;        ///< Latest scanned-byte total (status).
+    std::optional<std::string> _scanError; ///< Error that aborted the scan, if any (shown stickily).
 
     static constexpr int ScanPollMs = 60;   ///< Poll interval while a scan streams progress.
     static constexpr int IdlePollMs = 1000; ///< Idle poll interval (input/scan wakeups preempt it).
