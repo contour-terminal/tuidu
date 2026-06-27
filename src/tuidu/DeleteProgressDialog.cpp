@@ -4,6 +4,7 @@
 #include <tui/Theme.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <ranges>
 #include <string>
 #include <string_view>
@@ -75,7 +76,7 @@ void DeleteProgressDialog::render(tui::Canvas& canvas)
     // Line 2: the progress bar, split into filled and empty cells.
     auto const barWidth = innerWidth;
     auto const filled =
-        std::clamp(static_cast<int>(_progress * static_cast<float>(barWidth) + 0.5F), 0, barWidth);
+        std::clamp(static_cast<int>(std::lround(_progress * static_cast<float>(barWidth))), 0, barWidth);
     auto filledBar = std::string {};
     for ([[maybe_unused]] auto const cell: std::views::iota(0, filled))
         filledBar += kFilledCell;
