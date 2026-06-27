@@ -17,9 +17,9 @@ namespace tuidu
 
 namespace
 {
-    constexpr std::string_view kTitle = " Deleting ";
-    constexpr std::string_view kFilledCell = "█"; ///< █ — one filled bar cell.
-    constexpr std::string_view kEmptyCell = "░";  ///< ░ — one empty bar cell.
+    constexpr std::string_view Title = " Deleting ";
+    constexpr std::string_view FilledCell = "█"; ///< █ — one filled bar cell.
+    constexpr std::string_view EmptyCell = "░";  ///< ░ — one empty bar cell.
 
     /// Truncates @p text to @p maxCols columns, appending an ellipsis when it is too long.
     [[nodiscard]] std::string elide(std::string_view text, std::size_t maxCols)
@@ -51,7 +51,7 @@ void DeleteProgressDialog::setStatus(std::string status)
 
 tui::Size DeleteProgressDialog::preferredSize() const
 {
-    return tui::Size { .width = kWidth, .height = kHeight };
+    return tui::Size { .width = Width, .height = Height };
 }
 
 void DeleteProgressDialog::render(tui::Canvas& canvas)
@@ -64,14 +64,14 @@ void DeleteProgressDialog::render(tui::Canvas& canvas)
     auto const statusStyle = theme.textNormal;
     auto const hintStyle = theme.textMuted;
 
-    auto const area = tui::Rect { .x = 0, .y = 0, .width = kWidth, .height = kHeight };
+    auto const area = tui::Rect { .x = 0, .y = 0, .width = Width, .height = Height };
     canvas.clear(theme.dialogBackground);
-    canvas.drawBox(area, tui::BorderStyle::Rounded, boxStyle, kTitle, tui::TitleAlign::Left);
+    canvas.drawBox(area, tui::BorderStyle::Rounded, boxStyle, Title, tui::TitleAlign::Left);
 
-    auto const innerWidth = kWidth - (2 * kPadding);
+    auto const innerWidth = Width - (2 * Padding);
 
     // Line 1: the target being deleted.
-    canvas.putString(1, kPadding, elide(_target, static_cast<std::size_t>(innerWidth)), nameStyle);
+    canvas.putString(1, Padding, elide(_target, static_cast<std::size_t>(innerWidth)), nameStyle);
 
     // Line 2: the progress bar, split into filled and empty cells.
     auto const barWidth = innerWidth;
@@ -79,18 +79,18 @@ void DeleteProgressDialog::render(tui::Canvas& canvas)
         std::clamp(static_cast<int>(std::lround(_progress * static_cast<float>(barWidth))), 0, barWidth);
     auto filledBar = std::string {};
     for ([[maybe_unused]] auto const cell: std::views::iota(0, filled))
-        filledBar += kFilledCell;
+        filledBar += FilledCell;
     auto emptyBar = std::string {};
     for ([[maybe_unused]] auto const cell: std::views::iota(filled, barWidth))
-        emptyBar += kEmptyCell;
-    auto const consumed = canvas.putString(2, kPadding, filledBar, barStyle);
-    canvas.putString(2, kPadding + consumed, emptyBar, emptyStyle);
+        emptyBar += EmptyCell;
+    auto const consumed = canvas.putString(2, Padding, filledBar, barStyle);
+    canvas.putString(2, Padding + consumed, emptyBar, emptyStyle);
 
     // Line 3: the status counter (e.g. "Deleting 12 / 40").
-    canvas.putString(3, kPadding, elide(_status, static_cast<std::size_t>(innerWidth)), statusStyle);
+    canvas.putString(3, Padding, elide(_status, static_cast<std::size_t>(innerWidth)), statusStyle);
 
     // Footer hint.
-    canvas.putString(4, kPadding, "Esc to cancel", hintStyle);
+    canvas.putString(4, Padding, "Esc to cancel", hintStyle);
 }
 
 tui::EventResult DeleteProgressDialog::onEvent(tui::InputEvent const& event)

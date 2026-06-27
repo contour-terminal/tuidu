@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 #include <algorithm>
+#include <array>
 #include <cstdlib>
 #include <format>
 #include <span>
+#include <utility>
 
 #include <tuidu/SizeFormat.hpp>
 
@@ -16,12 +18,26 @@ namespace
     {
         switch (system)
         {
-            case UnitSystem::SI: return kSiUnits;
+            case UnitSystem::SI: return SiUnits;
             case UnitSystem::Binary: break;
         }
-        return kBinaryUnits;
+        return BinaryUnits;
     }
+
+    /// Config/CLI name → @ref UnitSystem. Adding a system is one row here.
+    constexpr std::array<std::pair<std::string_view, UnitSystem>, 2> UnitSystemNames { {
+        { "binary", UnitSystem::Binary },
+        { "si", UnitSystem::SI },
+    } };
 } // namespace
+
+std::optional<UnitSystem> unitSystemFromString(std::string_view name) noexcept
+{
+    for (auto const& [label, system]: UnitSystemNames)
+        if (label == name)
+            return system;
+    return std::nullopt;
+}
 
 std::string formatSize(std::int64_t bytes, UnitSystem system)
 {

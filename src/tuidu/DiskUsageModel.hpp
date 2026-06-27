@@ -48,6 +48,20 @@ class DiskUsageModel: public tui::TreeTableModel
     /// Sets the unit system (binary vs SI) used to format sizes.
     void setUnits(UnitSystem units) { _units = units; }
 
+    /// Sets the parent-share thresholds the color rules use to flag "large"/"huge" rows.
+    /// @param large Fraction (0..1) at/above which a row colors as "large".
+    /// @param huge Fraction (0..1) at/above which a row colors as "huge".
+    void setColorThresholds(double large, double huge) noexcept
+    {
+        _largeThreshold = large;
+        _hugeThreshold = huge;
+    }
+
+    /// Selects the active sort mode by index into @ref sortModes and re-sorts.
+    /// Out-of-range indices are ignored.
+    /// @param index Index into @ref sortModes.
+    void setSortMode(std::size_t index);
+
     /// @return The node id currently being browsed.
     [[nodiscard]] NodeId currentDir() const noexcept { return _currentDir; }
 
@@ -68,6 +82,8 @@ class DiskUsageModel: public tui::TreeTableModel
     std::size_t _sortMode = 0;               ///< Index into sortModes().
     SizeMode _sizeMode = SizeMode::Apparent; ///< Apparent vs disk usage.
     UnitSystem _units = UnitSystem::Binary;  ///< Unit formatting.
+    double _largeThreshold = 0.20;           ///< Parent-share at/above which a row is "large".
+    double _hugeThreshold = 0.50;            ///< Parent-share at/above which a row is "huge".
 };
 
 } // namespace tuidu

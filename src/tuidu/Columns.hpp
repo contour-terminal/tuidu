@@ -6,6 +6,7 @@
 
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -22,6 +23,11 @@ enum class SizeMode : std::uint8_t
     Apparent, ///< Apparent size (st_size).
     Disk,     ///< Allocated disk usage (st_blocks * 512).
 };
+
+/// Parses a @ref SizeMode from its lowercase config/CLI name (data-driven lookup).
+/// @param name "apparent" or "disk" (case-sensitive).
+/// @return The matching size mode, or @c std::nullopt if @p name is unrecognized.
+[[nodiscard]] std::optional<SizeMode> sizeModeFromString(std::string_view name) noexcept;
 
 /// Everything a column formatter needs to render one row. Pure inputs — no I/O.
 struct RenderCtx

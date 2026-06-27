@@ -52,6 +52,8 @@ App::App(tui::Terminal& terminal,
 {
     _model.setSizeMode(_config.sizeMode);
     _model.setUnits(_config.units);
+    _model.setColorThresholds(_config.largeThreshold, _config.hugeThreshold);
+    _model.setSortMode(_config.sortMode);
 
     // Lay out the browser above a one-line status bar.
     auto const rows = _screen.rows();
@@ -309,7 +311,7 @@ endo::coro::Task<void> App::mainFlow()
         // value would resolve to a past deadline and busy-spin on wait(0)). Poll briefly
         // while a scan streams progress, and idle on a long interval otherwise — input and
         // scan wakeups interrupt the wait immediately regardless of the timeout.
-        auto const pollMs = std::chrono::milliseconds { _scanInFlight ? kScanPollMs : kIdlePollMs };
+        auto const pollMs = std::chrono::milliseconds { _scanInFlight ? ScanPollMs : IdlePollMs };
         auto activity = co_await _runtime.nextActivity(pollMs);
 
         switch (activity.kind)

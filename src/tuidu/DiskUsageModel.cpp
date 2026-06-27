@@ -18,10 +18,6 @@ namespace
         auto const align = (col.align == Align::Right) ? tui::ColumnAlign::Right : tui::ColumnAlign::Left;
         return tui::TableColumn { .header = col.header, .width = width, .size = col.width, .align = align };
     }
-
-    // Thresholds for color rules (data, not hardcoded in predicates).
-    constexpr double kLargeThreshold = 0.20;
-    constexpr double kHugeThreshold = 0.50;
 } // namespace
 
 DiskUsageModel::DiskUsageModel(Tree& tree) noexcept: _tree(tree), _currentDir(tree.root())
@@ -76,8 +72,8 @@ tui::RowStyle DiskUsageModel::rowStyle(tui::RowId row, bool selected) const
     auto const ctx = ColorContext { .tree = _tree,
                                     .node = node,
                                     .percentOfParent = fraction,
-                                    .largeThreshold = kLargeThreshold,
-                                    .hugeThreshold = kHugeThreshold };
+                                    .largeThreshold = _largeThreshold,
+                                    .hugeThreshold = _hugeThreshold };
     auto const resolved = resolveColor(ctx, tui::currentTheme().colors);
 
     auto style = tui::Style {};
@@ -126,6 +122,14 @@ void DiskUsageModel::sortBy(int sortKey)
 void DiskUsageModel::setSizeMode(SizeMode mode)
 {
     _sizeMode = mode;
+}
+
+void DiskUsageModel::setSortMode(std::size_t index)
+{
+    if (index >= sortModes().size())
+        return;
+    _sortMode = index;
+    resort();
 }
 
 void DiskUsageModel::resetToRoot()

@@ -38,7 +38,7 @@ namespace
         return true;
     }
 
-    constexpr std::array<ColorRule, 5> kColorRules { {
+    constexpr std::array<ColorRule, 5> ColorRules { {
         { .match = &isReadError, .slot = &tui::ColorPalette::error, .bold = false },
         { .match = &isHugeShare, .slot = &tui::ColorPalette::warning, .bold = true },
         { .match = &isLargeShare, .slot = &tui::ColorPalette::accent, .bold = false },
@@ -49,16 +49,16 @@ namespace
 
 std::span<ColorRule const> colorRules() noexcept
 {
-    return kColorRules;
+    return ColorRules;
 }
 
 ResolvedColor resolveColor(ColorContext const& ctx, tui::ColorPalette const& palette)
 {
-    for (auto const& rule: kColorRules)
+    for (auto const& rule: ColorRules)
         if (rule.match(ctx))
             return ResolvedColor { .color = palette.*(rule.slot), .bold = rule.bold };
 
-    // kColorRules always ends with a catch-all, so this is unreachable; default to text.
+    // ColorRules always ends with a catch-all, so this is unreachable; default to text.
     return ResolvedColor { .color = palette.text, .bold = false };
 }
 

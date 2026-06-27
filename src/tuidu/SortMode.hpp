@@ -5,6 +5,8 @@
 /// @brief Data-driven sort modes: a table of label + trigger action + comparator.
 
 #include <array>
+#include <cstddef>
+#include <optional>
 #include <span>
 #include <string_view>
 
@@ -22,6 +24,7 @@ using SortComparator = bool (*)(Tree const&, NodeId a, NodeId b);
 struct SortDef
 {
     std::string_view label; ///< Human-readable label (for the status bar).
+    std::string_view key;   ///< Stable config/CLI identifier (e.g. "size-desc").
     Action triggerAction;   ///< Keymap action that selects/cycles to this mode.
     SortComparator less;    ///< Ordering comparator.
 };
@@ -39,5 +42,10 @@ struct SortDef
 /// @param action The triggering action.
 /// @return Index into @ref sortModes of the mode to apply next.
 [[nodiscard]] std::size_t nextSortMode(std::size_t current, Action action) noexcept;
+
+/// Looks up a sort mode by its stable @c SortDef::key (data-driven lookup).
+/// @param key One of the @ref sortModes keys, e.g. "size-desc", "name", "date".
+/// @return The index into @ref sortModes, or @c std::nullopt if @p key is unrecognized.
+[[nodiscard]] std::optional<std::size_t> sortModeIndexFromKey(std::string_view key) noexcept;
 
 } // namespace tuidu

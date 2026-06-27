@@ -31,7 +31,7 @@ TEST_CASE("Keymap: every default binding dispatches to its action", "[keymap][ta
 {
     // Table-completeness: each row's chord must resolve to its declared action.
     Keymap const map;
-    for (auto const& def: kDefaultKeymap)
+    for (auto const& def: DefaultKeymap)
     {
         auto const chord = tui::KeyChord::parse(def.chord);
         REQUIRE(chord.has_value());
@@ -130,10 +130,10 @@ TEST_CASE("Keymap: bind rejects an unparseable chord", "[keymap]")
 
 TEST_CASE("Keymap: custom table is honored", "[keymap]")
 {
-    constexpr std::array<KeyBindingDef, 1> custom { {
+    constexpr std::array<KeyBindingDef, 1> Custom { {
         { .chord = "x", .action = Action::Rescan, .help = "Rescan now" },
     } };
-    Keymap const map { custom };
+    Keymap const map { Custom };
     CHECK(map.lookup(charKey('x')) == Action::Rescan);
     CHECK(map.lookup(charKey('j')) == Action::None); // default bindings not present
     CHECK(map.helpEntries().size() == 1);

@@ -30,7 +30,7 @@ struct KeyBindingDef
 /// The default vim-style bindings. Adding a binding is one row here; the same row
 /// feeds both dispatch and the `?` help overlay — no parallel lists to keep in sync.
 /// The size is deduced (std::to_array) so adding a row needs no count update.
-inline constexpr auto kDefaultKeymap = std::to_array<KeyBindingDef>({
+inline constexpr auto DefaultKeymap = std::to_array<KeyBindingDef>({
     { "j", Action::MoveDown, "Move down" },
     { "down", Action::MoveDown, "" },
     { "k", Action::MoveUp, "Move up" },
@@ -69,7 +69,7 @@ struct HelpEntry
 /// Resolves key events to actions using a parsed binding table, and exposes the
 /// help rows derived from that same table.
 ///
-/// Built from @ref kDefaultKeymap by default; bindings can be overridden at runtime
+/// Built from @ref DefaultKeymap by default; bindings can be overridden at runtime
 /// (e.g. from user config) via @ref bind. Dispatch is a single linear match over the
 /// parsed chords — no per-key branching.
 class Keymap

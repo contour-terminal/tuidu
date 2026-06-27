@@ -9,6 +9,8 @@
 #include <platform/NativeFileSystem.hpp>
 #include <platform/Wakeup.hpp>
 #include <tuidu/App.hpp>
+#include <tuidu/Cli.hpp>
+#include <tuidu/Config.hpp>
 #include <tuidu/DeleteProgress.hpp>
 #include <tuidu/ScanProgress.hpp>
 
@@ -21,10 +23,10 @@
 #include <tui/Terminal.hpp>
 #include <tui/runtime/TerminalEventSource.hpp>
 
+#include <filesystem>
+#include <memory>
+#include <optional>
 #include <print>
-#include <span>
-#include <string>
-#include <vector>
 
 namespace
 {
@@ -41,16 +43,35 @@ namespace
 
 /// @brief Program entry point.
 /// @param argc Argument count.
-/// @param argv Arguments; argv[1], if present, is the directory to scan.
+/// @param argv Arguments: optional flags (see `--help`) and a directory to scan.
 /// @return Process exit code.
 int main(int argc, char const* argv[])
 {
-    auto const args = std::span<char const* const> { argv, static_cast<std::size_t>(argc) };
+    // 1. Parse the command line. `--help`/`--version`/usage errors exit here.
+    auto cli = tuidu::parseCommandLine(argc, argv);
+    if (!cli.options)
+        return cli.exitCode;
+
+    endo::platform::NativeFileSystem fileSystem;
+
+    // 2. Start from defaults, then overlay the YAML config file (explicit --config wins over the
+    //    auto-discovered per-OS path). 3. CLI flags overlay last so they win over the file.
     auto config = tuidu::AppConfig {};
-    config.rootPath = (args.size() > 1) ? std::string { args[1] } : std::string { "." };
+    auto const configPath = cli.options->configPath
+                                ? std::optional<std::filesystem::path> { *cli.options->configPath }
+                                : tuidu::defaultConfigPath();
+    if (configPath)
+    {
+        auto const applied = tuidu::applyConfigFile(fileSystem, *configPath, config);
+        if (!applied)
+        {
+            std::println(stderr, "tuidu: {}", applied.error());
+            return 1;
+        }
+    }
+    cli.options->applyTo(config);
 
     auto provider = makeFileInfoProvider();
-    endo::platform::NativeFileSystem fileSystem;
 
     // Worker → UI channels; their shared wakeup is what the event source selects on so a scan- or
     // delete-progress push wakes the UI loop (surfacing as ActivityKind::AgentReady).

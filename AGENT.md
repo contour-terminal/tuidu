@@ -114,8 +114,9 @@ sibling `../endo` project** and must stay byte-for-byte synchronizable in both d
 - Document new public functions, classes, structs, and members with Doxygen (`/// @param`,
   `/// @return`).
 - Coroutine parameters must be passed **by value** (references can dangle across suspension).
-- Naming/static-analysis rules live in `.clang-tidy` (authoritative; runs in debug builds). Do not
-  suppress findings with `NOLINT` — fix the underlying issue.
+- Naming conventions (including constant casing — `CamelCase`, never a `k` prefix) and all other
+  static-analysis rules are **mandated by `.clang-tidy`** (authoritative; runs in debug builds).
+  Consult it as the source of truth, and do not suppress findings with `NOLINT` — fix the underlying issue.
 - Run `clang-format` after changes; formatting rules are in `.clang-format`.
 
 ---

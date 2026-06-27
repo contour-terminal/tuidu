@@ -1,14 +1,33 @@
 // SPDX-License-Identifier: Apache-2.0
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <ctime>
 #include <format>
+#include <utility>
 
 #include <tuidu/Columns.hpp>
 
 namespace tuidu
 {
+
+namespace
+{
+    /// Config/CLI name → @ref SizeMode. Adding a mode is one row here.
+    constexpr std::array<std::pair<std::string_view, SizeMode>, 2> SizeModeNames { {
+        { "apparent", SizeMode::Apparent },
+        { "disk", SizeMode::Disk },
+    } };
+} // namespace
+
+std::optional<SizeMode> sizeModeFromString(std::string_view name) noexcept
+{
+    for (auto const& [label, mode]: SizeModeNames)
+        if (label == name)
+            return mode;
+    return std::nullopt;
+}
 
 std::int64_t RenderCtx::metric(NodeId id) const noexcept
 {
@@ -82,7 +101,7 @@ std::string fmtName(RenderCtx const& ctx)
 
 namespace
 {
-    constexpr std::array<ColumnDef, 6> kColumns { {
+    constexpr std::array<ColumnDef, 6> Columns { {
         { .header = "Size",
           .widthPolicy = WidthPolicy::Fixed,
           .width = 10,
@@ -118,7 +137,7 @@ namespace
 
 std::span<ColumnDef const> columns() noexcept
 {
-    return kColumns;
+    return Columns;
 }
 
 } // namespace tuidu
