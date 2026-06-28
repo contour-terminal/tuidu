@@ -94,5 +94,13 @@ int main(int argc, char const* argv[])
     auto const rc = app.run();
 
     terminal.shutdown();
+
+    // If the background scan aborted, the TUI is gone now — echo the diagnostic to stderr so the
+    // user always sees why, rather than the process appearing to exit normally.
+    if (auto const& scanError = app.scanError())
+    {
+        std::println(stderr, "tuidu: scan did not complete: {}", *scanError);
+        return 1;
+    }
     return rc;
 }

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+  Forces the process active code page to UTF-8 on Windows 10 1903+.
+
+  Without this, std::filesystem's narrow conversions use the legacy ANSI code page:
+  std::filesystem::path::string() throws std::system_error ("No mapping for the Unicode
+  character exists in the target multi-byte code page") the moment it meets a filename that
+  the ANSI code page cannot represent — which aborts a scan of any drive holding such names
+  (e.g. tuidu D:/). With activeCodePage=UTF-8, path::string() is lossless and never throws,
+  and fs::path(std::string) round-trips the UTF-8 paths the scanner stores. It also makes the
+  UTF-8 bytes we write match the console output code page we set (SetConsoleOutputCP(CP_UTF8)).
+-->
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <assemblyIdentity type="win32" name="tuidu" version="0.1.0.0"/>
+
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <activeCodePage xmlns="http://schemas.microsoft.com/SMI/2019/WindowsSettings">UTF-8</activeCodePage>
+    </windowsSettings>
+  </application>
+
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <!-- Windows 10 / 11 -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"/>
+    </application>
+  </compatibility>
+
+</assembly>

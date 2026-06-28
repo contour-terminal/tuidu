@@ -73,7 +73,12 @@ void App::refreshStatus()
     auto const total = (_model.sizeMode() == SizeMode::Disk) ? _tree[root].aggBlocks : _tree[root].aggSize;
     auto const sortLabel = sortModes().empty() ? std::string_view {} : sortModes().front().label;
 
-    _statusBar.setLeftText(_model.currentTitle());
+    // A scan error is sticky and takes over the left text so the user always sees the
+    // diagnostic instead of the process silently aborting.
+    if (_scanError)
+        _statusBar.setLeftText(std::format("scan error: {}", *_scanError));
+    else
+        _statusBar.setLeftText(_model.currentTitle());
     if (_scanInFlight)
         _statusBar.setRightText(
             std::format("scanning… {} items  {}", _scannedItems, formatSize(_scannedBytes, _config.units)));
@@ -235,6 +240,8 @@ void App::applyProgress()
         _scannedBytes = p.scannedBytes;
         if (p.done)
             _scanInFlight = false;
+        if (p.error.has_value())
+            _scanError = p.error;
     }
     // The tree grew (or finished); re-apply the sort so new children appear in order.
     // Hold the tree mutex so the worker is not mid-mutation while we read/sort.

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
+#include <exception>
 #include <optional>
+#include <string>
 #include <utility>
 
 #include <tuidu/ScanWorker.hpp>
@@ -54,6 +56,23 @@ void ScanWorker::start(NodeId rootId)
         {
             // Cancelled mid-scan: emit a final done message so the UI stops the spinner.
             _progress.push(ScanProgress { .node = rootId, .currentPath = std::nullopt, .done = true });
+        }
+        catch (std::exception const& ex)
+        {
+            // Any other failure (e.g. a filesystem/encoding error from the provider) must not
+            // escape the worker thread — an unhandled exception here would call std::terminate
+            // and kill the process with no diagnostic. Surface it to the UI instead.
+            _progress.push(ScanProgress { .node = rootId,
+                                          .currentPath = std::nullopt,
+                                          .done = true,
+                                          .error = std::string { ex.what() } });
+        }
+        catch (...)
+        {
+            _progress.push(ScanProgress { .node = rootId,
+                                          .currentPath = std::nullopt,
+                                          .done = true,
+                                          .error = std::string { "unknown error during scan" } });
         }
     });
 }

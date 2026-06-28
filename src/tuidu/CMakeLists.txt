@@ -44,6 +44,12 @@ enable_sanitizers(tuidu-core)
 enable_clang_tidy(tuidu-core)
 
 add_executable(tuidu main.cpp)
+# On Windows, embed a manifest that sets the process active code page to UTF-8 so
+# std::filesystem narrow conversions are lossless (and never throw on non-ANSI filenames).
+# CMake forwards a .manifest in the source list to the linker for MSVC-like toolchains.
+if(WIN32)
+    target_sources(tuidu PRIVATE tuidu.manifest)
+endif()
 target_link_libraries(tuidu PRIVATE tuidu-core)
 target_compile_features(tuidu PRIVATE cxx_std_23)
 enable_sanitizers(tuidu)

@@ -12,6 +12,7 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -128,6 +129,38 @@ TEST_CASE("App: scans and quits via 'q', tree populated", "[app]")
     // The scan completed before quit: root aggregate reflects a.txt + sub/x.txt.
     CHECK(app.tree().root() != InvalidNode);
     CHECK(app.tree()[app.tree().root()].aggSize == 150);
+}
+
+TEST_CASE("App: a failed scan surfaces a diagnostic instead of aborting", "[app]")
+{
+    // A provider that throws stands in for the real failure (a Windows filename the ANSI code
+    // page can't map). The app must keep running, expose the error via scanError(), and not
+    // terminate the process.
+    struct ThrowingProvider final: endo::platform::FileInfoProvider
+    {
+        [[nodiscard]] std::vector<FileEntry> listDirectory(std::string const& /*path*/) const override
+        {
+            throw std::runtime_error("boom: unrepresentable filename");
+        }
+    };
+
+    ThrowingProvider provider;
+    ScanThenKeysSource source { { keyChar(U'q') } };
+
+    auto mockOut = std::make_unique<tui::MockTerminalOutput>(80, 24);
+    tui::Terminal terminal { std::move(mockOut) };
+    MessageQueue<ScanProgress> progress;
+    MessageQueue<DeleteProgress> deleteProgress;
+    InMemoryFileSystem fs;
+
+    AppConfig config;
+    config.themeMode = ThemeMode::Dark;
+    App app { terminal, source, provider, fs, progress, deleteProgress, config };
+    source.setScanInFlight([&] { return app.scanInFlight(); });
+
+    CHECK(app.run() == 0);
+    REQUIRE(app.scanError().has_value());
+    CHECK(app.scanError()->find("boom") != std::string::npos);
 }
 
 TEST_CASE("App: 'j' then 'q' navigates without crashing", "[app]")
