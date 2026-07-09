@@ -1,0 +1,161 @@
+name: Release Artifacts
+
+# Produces downloadable tuidu binaries so users can grab them straight from the
+# Actions run (Artifacts section) and — on a v* tag — from the GitHub Release page.
+#
+#   * Linux  : a fully static x86_64 executable (no shared-library dependencies)
+#   * Windows: tuidu.exe built with clang-cl
+#
+# The test matrix lives in build.yml; this workflow is only about shipping binaries.
+
+on:
+  push:
+    branches: ["master"]
+    tags: ["v*"]
+  pull_request:
+    branches: ["master"]
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    name: "Linux x86_64 (static)"
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # full history + tags so the version is derived correctly
+
+    - name: Install clang
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 21
+
+    - name: ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ccache-release-linux-static
+        max-size: 256M
+
+    - name: Install CMake
+      uses: ssrobins/install-cmake@v1
+
+    - name: Install Ninja
+      uses: seanmiddleditch/gha-setup-ninja@master
+
+    - name: Get vendored libraries (crispy)
+      run: python3 scripts/get_contour_dirs.py
+
+    - name: Configure CMake
+      run: >
+        cmake --preset clang-release
+        -DCMAKE_C_COMPILER=clang-21
+        -DCMAKE_CXX_COMPILER=clang++-21
+        -DENABLE_STATIC_LINKING=ON
+        -DTUIDU_TESTING=OFF
+
+    - name: Build
+      run: cmake --build build/clang-release --target tuidu
+
+    - name: Verify the binary is statically linked
+      run: |
+        BIN=build/clang-release/src/tuidu/tuidu
+        file "$BIN"
+        # A fully static binary has no dynamic-section deps: `ldd` reports as much
+        # and must NOT list shared objects. Fail loudly if it somehow got linked
+        # against shared libraries.
+        if ldd "$BIN" | grep -qE '=>|\.so'; then
+          echo "::error::binary is not statically linked"; ldd "$BIN"; exit 1
+        fi
+        ldd "$BIN" || true
+
+    - name: Stage artifact
+      run: |
+        VERSION="$(tr -d '[:space:]' < version.txt)"
+        mkdir -p dist
+        cp build/clang-release/src/tuidu/tuidu "dist/tuidu-${VERSION}-linux-x86_64"
+        echo "asset=dist/tuidu-${VERSION}-linux-x86_64" >> "$GITHUB_ENV"
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: tuidu-linux-x86_64
+        path: dist/tuidu-*-linux-x86_64
+        if-no-files-found: error
+
+  windows:
+    runs-on: windows-latest
+    name: "Windows x86_64 (clang-cl)"
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Install CMake
+      uses: ssrobins/install-cmake@v1
+
+    - name: Install Ninja
+      uses: seanmiddleditch/gha-setup-ninja@master
+
+    - name: Get vendored libraries (crispy)
+      run: python scripts/get_contour_dirs.py
+
+    - name: Setup MSVC environment
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Configure CMake
+      run: cmake --preset clangcl-release -DTUIDU_TESTING=OFF
+
+    - name: Build
+      run: cmake --build build/clangcl-release --config Release --target tuidu
+
+    - name: Stage artifact
+      shell: pwsh
+      run: |
+        $version = (Get-Content version.txt -Raw).Trim()
+        New-Item -ItemType Directory -Force dist | Out-Null
+        Copy-Item build/clangcl-release/src/tuidu/tuidu.exe "dist/tuidu-$version-windows-x86_64.exe"
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: tuidu-windows-x86_64
+        path: dist/tuidu-*-windows-x86_64.exe
+        if-no-files-found: error
+
+  # On a v* tag, gather the built binaries and publish them on the Release page.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, windows]
+    runs-on: ubuntu-latest
+    name: "Publish GitHub Release"
+    permissions:
+      contents: write
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: dist
+        merge-multiple: true
+
+    - name: List assets
+      run: ls -R dist
+
+    - name: Create / update release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        TAG: ${{ github.ref_name }}
+        REPO: ${{ github.repository }}
+      run: |
+        assets=(dist/tuidu-*-linux-x86_64 dist/tuidu-*-windows-x86_64.exe)
+        if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+          # Release already exists (re-run / retag): replace the assets in place.
+          gh release upload "$TAG" --repo "$REPO" --clobber "${assets[@]}"
+        else
+          gh release create "$TAG" --repo "$REPO" --title "$TAG" \
+            --generate-notes "${assets[@]}"
+        fi

@@ -54,6 +54,10 @@ target_link_libraries(tuidu PRIVATE tuidu-core)
 target_compile_features(tuidu PRIVATE cxx_std_23)
 enable_sanitizers(tuidu)
 enable_clang_tidy(tuidu)
+# Produce a fully self-contained executable when ENABLE_STATIC_LINKING=ON (a no-op
+# otherwise). Applied to the final executable — the -static link option must sit on
+# the binary that pulls in the C/C++ runtimes, not on the intermediate static libs.
+enable_static_linking(tuidu)
 
 # Tests
 if(ENDO_TESTING)
