@@ -1,0 +1,17 @@
+{
+  "_comment": [
+    "Pins the release model for the /draft-release and /publish-release skills.",
+    "Detection gets everything else right on its own; only 'artifacts' cannot be inferred,",
+    "because release.yml uploads via `gh release upload` (which names its files at runtime)",
+    "rather than declaring a static `files:` block. Without this list, /publish-release falls",
+    "back to comparing against the previous release — which does not exist yet for 0.1.0, so",
+    "it could not verify anything at all on the first release.",
+    "Keep this list in step with the build matrix in .github/workflows/release.yml."
+  ],
+  "artifacts": [
+    "tuidu-*-linux-x86_64",
+    "tuidu-*-macos-arm64",
+    "tuidu-*-windows-x86_64.exe",
+    "SHA256SUMS"
+  ]
+}
