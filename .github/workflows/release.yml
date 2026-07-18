@@ -1,10 +1,22 @@
-name: Release Artifacts
+name: Release
 
-# Produces downloadable tuidu binaries so users can grab them straight from the
-# Actions run (Artifacts section) and — on a v* tag — from the GitHub Release page.
+# Produces downloadable tuidu binaries and, on a v* tag, assembles a **draft** GitHub Release
+# from them.
 #
 #   * Linux  : a fully static x86_64 executable (no shared-library dependencies)
+#   * macOS  : arm64 executable
 #   * Windows: tuidu.exe built with clang-cl
+#
+# On pushes and pull requests the binaries are only attached to the Actions run, so anyone can
+# grab a build straight from the Artifacts section. On a v* tag the same binaries additionally
+# land on a draft release, together with a SHA256SUMS file.
+#
+# The release is deliberately left as a DRAFT. Publishing is a separate, verified step — see the
+# /draft-release and /publish-release skills: /draft-release bumps version.txt, tags and pushes
+# (which starts this workflow), and /publish-release then asserts every job is green and every
+# expected asset is attached before flipping the draft. A workflow that published directly would
+# make that gate impossible, because a half-built release is indistinguishable from a good one
+# until someone checks.
 #
 # The test matrix lives in build.yml; this workflow is only about shipping binaries.
 
@@ -15,147 +27,255 @@ on:
   pull_request:
     branches: ["master"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build a draft release for (empty = build artifacts only)'
+        required: false
+
+permissions:
+  contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.tag || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  linux:
+  # Resolves what this run is (a plain artifact build or a release build), and — when releasing —
+  # opens the draft up front so the build jobs have somewhere to upload to.
+  prepare:
+    name: "Prepare"
     runs-on: ubuntu-latest
-    name: "Linux x86_64 (static)"
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # full history + tags so the version is derived correctly
-
-    - name: Install clang
-      run: |
-        wget https://apt.llvm.org/llvm.sh
-        chmod +x llvm.sh
-        sudo ./llvm.sh 21
-
-    - name: ccache
-      uses: hendrikmuhs/ccache-action@v1.2
-      with:
-        key: ccache-release-linux-static
-        max-size: 256M
-
-    - name: Install CMake
-      uses: ssrobins/install-cmake@v1
-
-    - name: Install Ninja
-      uses: seanmiddleditch/gha-setup-ninja@master
-
-    - name: Get vendored libraries (crispy)
-      run: python3 scripts/get_contour_dirs.py
-
-    - name: Configure CMake
-      run: >
-        cmake --preset clang-release
-        -DCMAKE_C_COMPILER=clang-21
-        -DCMAKE_CXX_COMPILER=clang++-21
-        -DENABLE_STATIC_LINKING=ON
-        -DTUIDU_TESTING=OFF
-
-    - name: Build
-      run: cmake --build build/clang-release --target tuidu
-
-    - name: Verify the binary is statically linked
-      run: |
-        BIN=build/clang-release/src/tuidu/tuidu
-        file "$BIN"
-        # A fully static binary has no dynamic-section deps: `ldd` reports as much
-        # and must NOT list shared objects. Fail loudly if it somehow got linked
-        # against shared libraries.
-        if ldd "$BIN" | grep -qE '=>|\.so'; then
-          echo "::error::binary is not statically linked"; ldd "$BIN"; exit 1
-        fi
-        ldd "$BIN" || true
-
-    - name: Stage artifact
-      run: |
-        VERSION="$(tr -d '[:space:]' < version.txt)"
-        mkdir -p dist
-        cp build/clang-release/src/tuidu/tuidu "dist/tuidu-${VERSION}-linux-x86_64"
-        echo "asset=dist/tuidu-${VERSION}-linux-x86_64" >> "$GITHUB_ENV"
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: tuidu-linux-x86_64
-        path: dist/tuidu-*-linux-x86_64
-        if-no-files-found: error
-
-  windows:
-    runs-on: windows-latest
-    name: "Windows x86_64 (clang-cl)"
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Install CMake
-      uses: ssrobins/install-cmake@v1
-
-    - name: Install Ninja
-      uses: seanmiddleditch/gha-setup-ninja@master
-
-    - name: Get vendored libraries (crispy)
-      run: python scripts/get_contour_dirs.py
-
-    - name: Setup MSVC environment
-      uses: ilammy/msvc-dev-cmd@v1
-
-    - name: Configure CMake
-      run: cmake --preset clangcl-release -DTUIDU_TESTING=OFF
-
-    - name: Build
-      run: cmake --build build/clangcl-release --config Release --target tuidu
-
-    - name: Stage artifact
-      shell: pwsh
-      run: |
-        $version = (Get-Content version.txt -Raw).Trim()
-        New-Item -ItemType Directory -Force dist | Out-Null
-        Copy-Item build/clangcl-release/src/tuidu/tuidu.exe "dist/tuidu-$version-windows-x86_64.exe"
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: tuidu-windows-x86_64
-        path: dist/tuidu-*-windows-x86_64.exe
-        if-no-files-found: error
-
-  # On a v* tag, gather the built binaries and publish them on the Release page.
-  release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [linux, windows]
-    runs-on: ubuntu-latest
-    name: "Publish GitHub Release"
     permissions:
       contents: write
+    outputs:
+      releasing: ${{ steps.resolve.outputs.releasing }}
+      tag: ${{ steps.resolve.outputs.tag }}
+      ref: ${{ steps.resolve.outputs.ref }}
+      version: ${{ steps.version.outputs.version }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+
     steps:
-    - name: Download all artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: dist
-        merge-multiple: true
+      - name: "Resolve release tag"
+        id: resolve
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          REF: ${{ github.ref }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          # A tag push releases; so does an explicit workflow_dispatch tag. Everything else
+          # (branch pushes, pull requests) only builds artifacts. github.ref_name is NOT a tag
+          # on a pull_request — it is "<pr>/merge" — so it must never be used unguarded.
+          if [[ -n "$INPUT_TAG" ]]; then
+            TAG="$INPUT_TAG"
+          elif [[ "$REF" == refs/tags/v* ]]; then
+            TAG="$REF_NAME"
+          else
+            TAG=""
+          fi
+          {
+            echo "tag=$TAG"
+            echo "ref=$TAG"                                   # empty = check out the default ref
+            echo "releasing=$([[ -n "$TAG" ]] && echo true || echo false)"
+          } >> "$GITHUB_OUTPUT"
 
-    - name: List assets
-      run: ls -R dist
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.resolve.outputs.ref }}
 
-    - name: Create / update release
-      env:
-        GH_TOKEN: ${{ github.token }}
-        TAG: ${{ github.ref_name }}
-        REPO: ${{ github.repository }}
-      run: |
-        assets=(dist/tuidu-*-linux-x86_64 dist/tuidu-*-windows-x86_64.exe)
-        if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
-          # Release already exists (re-run / retag): replace the assets in place.
-          gh release upload "$TAG" --repo "$REPO" --clobber "${assets[@]}"
-        else
-          gh release create "$TAG" --repo "$REPO" --title "$TAG" \
-            --generate-notes "${assets[@]}"
-        fi
+      - name: "Read version"
+        id: version
+        run: echo "version=$(tr -d '[:space:]' < version.txt)" >> "$GITHUB_OUTPUT"
+
+      # version.txt wins over git-describe in cmake/Version.cmake, so a tag that disagrees with
+      # it would ship binaries reporting a version nobody can match back to a release.
+      - name: "Verify tag matches version.txt"
+        if: steps.resolve.outputs.releasing == 'true'
+        env:
+          RELEASE_TAG: ${{ steps.resolve.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if [[ "${RELEASE_TAG#v}" != "$VERSION" ]]; then
+            echo "::error::Tag '$RELEASE_TAG' disagrees with version.txt ('$VERSION')."
+            echo "Set version.txt to '${RELEASE_TAG#v}', or re-tag as 'v${VERSION}'."
+            exit 1
+          fi
+
+      - name: "Create draft release"
+        if: steps.resolve.outputs.releasing == 'true'
+        env:
+          RELEASE_TAG: ${{ steps.resolve.outputs.tag }}
+        run: |
+          # Idempotent: a re-run of a release build must not fail on the existing draft.
+          gh release view "$RELEASE_TAG" >/dev/null 2>&1 \
+            || gh release create "$RELEASE_TAG" \
+                 --draft \
+                 --generate-notes \
+                 --title "tuidu ${RELEASE_TAG#v}"
+
+  build:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset: linux-x86_64
+            preset: clang-release
+            build_dir: build/clang-release
+            binary: build/clang-release/src/tuidu/tuidu
+            cmake_extra: >-
+              -DCMAKE_C_COMPILER=clang-21
+              -DCMAKE_CXX_COMPILER=clang++-21
+              -DENABLE_STATIC_LINKING=ON
+          - os: macos-14
+            asset: macos-arm64
+            preset: clang-release
+            build_dir: build/clang-release
+            binary: build/clang-release/src/tuidu/tuidu
+            cmake_extra: ""
+          - os: windows-latest
+            asset: windows-x86_64
+            preset: clangcl-release
+            build_dir: build/clangcl-release
+            binary: build/clangcl-release/src/tuidu/tuidu.exe
+            cmake_extra: ""
+
+    name: "Build ${{ matrix.asset }}"
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.ref }}
+          fetch-depth: 0  # full history + tags so the version is derived correctly
+
+      - name: "Install clang (Linux)"
+        if: runner.os == 'Linux'
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 21
+
+      - name: "Install Homebrew dependencies (macOS)"
+        if: runner.os == 'macOS'
+        run: |
+          brew install llvm ninja
+          echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
+
+      # Picked up automatically by cmake/EnableCcache.cmake as the compiler launcher.
+      - name: "ccache"
+        if: runner.os != 'Windows'
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ccache-release-${{ matrix.asset }}
+          max-size: 256M
+
+      - name: "Install CMake"
+        uses: ssrobins/install-cmake@v1
+
+      - name: "Install Ninja (Linux/Windows)"
+        if: runner.os != 'macOS'
+        uses: seanmiddleditch/gha-setup-ninja@master
+
+      - name: "Setup MSVC environment"
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: "Get vendored libraries (crispy)"
+        if: runner.os != 'Windows'
+        run: python3 scripts/get_contour_dirs.py
+
+      - name: "Get vendored libraries (crispy, Windows)"
+        if: runner.os == 'Windows'
+        run: python scripts/get_contour_dirs.py
+
+      - name: "Configure"
+        run: cmake --preset ${{ matrix.preset }} -DTUIDU_TESTING=OFF ${{ matrix.cmake_extra }}
+
+      - name: "Build"
+        run: cmake --build ${{ matrix.build_dir }} --target tuidu
+
+      - name: "Strip binary"
+        if: runner.os != 'Windows'
+        run: strip ${{ matrix.binary }}
+
+      # A fully static binary has no dynamic-section deps: `ldd` must NOT list shared objects.
+      # Fail loudly if it somehow got linked against shared libraries.
+      - name: "Verify the binary is statically linked (Linux)"
+        if: runner.os == 'Linux'
+        run: |
+          file "${{ matrix.binary }}"
+          if ldd "${{ matrix.binary }}" | grep -qE '=>|\.so'; then
+            echo "::error::binary is not statically linked"; ldd "${{ matrix.binary }}"; exit 1
+          fi
+          ldd "${{ matrix.binary }}" || true
+
+      # `--version` is handled before the terminal is initialised, so this works with stdout
+      # redirected — which it always is on a runner.
+      - name: "Verify binary"
+        run: ${{ matrix.binary }} --version
+
+      - name: "Stage artifact"
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          mkdir -p dist
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            cp "${{ matrix.binary }}" "dist/tuidu-${VERSION}-${{ matrix.asset }}.exe"
+          else
+            cp "${{ matrix.binary }}" "dist/tuidu-${VERSION}-${{ matrix.asset }}"
+          fi
+
+      - name: "Upload artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: tuidu-${{ matrix.asset }}
+          path: dist/tuidu-*
+          if-no-files-found: error
+
+  # On a v* tag, gather the built binaries and attach them to the draft release.
+  # It stays a draft — /publish-release verifies and publishes it.
+  release:
+    needs: [prepare, build]
+    if: needs.prepare.outputs.releasing == 'true'
+    name: "Attach assets to draft release"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: "Download all artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: "List assets"
+        run: ls -R dist
+
+      - name: "Generate checksums"
+        working-directory: dist
+        run: sha256sum tuidu-* > SHA256SUMS
+
+      - name: "Upload release assets"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: gh release upload --clobber "$RELEASE_TAG" dist/*
+
+      - name: "Summary"
+        env:
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          {
+            echo "### Draft release \`$RELEASE_TAG\` is ready"
+            echo
+            echo "Assets attached. The release is still a **draft** —"
+            echo "run \`/publish-release\` to verify and publish it."
+          } >> "$GITHUB_STEP_SUMMARY"
