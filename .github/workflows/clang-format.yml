@@ -27,12 +27,10 @@ jobs:
         # Pin the unversioned name so .clang-format is applied by a known version.
         sudo ln -sf "$(command -v clang-format-21)" /usr/local/bin/clang-format
 
-    # The first-party application plus the vendored coro/platform/tui libraries are
-    # subject to .clang-format. The auto-fetched `crispy` tree (gitignored) is excluded
-    # by only checking files tracked in git under src/.
+    # The first-party application is subject to .clang-format. core-cpp, which CPM fetches into
+    # the build tree, is not: only files tracked in git under src/ are checked.
     - name: Check formatting
       run: |
-        mapfile -t files < <(git ls-files 'src/**/*.cpp' 'src/**/*.hpp' 'src/**/*.h' 'src/**/*.cc' \
-          | grep -v '^src/crispy/')
+        mapfile -t files < <(git ls-files 'src/**/*.cpp' 'src/**/*.hpp' 'src/**/*.h' 'src/**/*.cc')
         echo "Checking ${#files[@]} files with $(clang-format --version)"
         clang-format --dry-run --Werror "${files[@]}"

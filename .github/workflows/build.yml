@@ -58,9 +58,6 @@ jobs:
       if: runner.os == 'Linux'
       uses: seanmiddleditch/gha-setup-ninja@master
 
-    - name: Get vendored libraries (crispy)
-      run: python3 scripts/get_contour_dirs.py
-
     - name: Configure CMake (Linux)
       if: runner.os == 'Linux'
       run: cmake --preset ${{ matrix.preset }} -DCMAKE_C_COMPILER=clang-21 -DCMAKE_CXX_COMPILER=clang++-21
@@ -91,9 +88,6 @@ jobs:
 
     - name: Install Ninja
       uses: seanmiddleditch/gha-setup-ninja@master
-
-    - name: Get vendored libraries (crispy)
-      run: python scripts/get_contour_dirs.py
 
     - name: Setup MSVC environment
       uses: ilammy/msvc-dev-cmd@v1

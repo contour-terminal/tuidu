@@ -186,14 +186,6 @@ jobs:
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: "Get vendored libraries (crispy)"
-        if: runner.os != 'Windows'
-        run: python3 scripts/get_contour_dirs.py
-
-      - name: "Get vendored libraries (crispy, Windows)"
-        if: runner.os == 'Windows'
-        run: python scripts/get_contour_dirs.py
-
       - name: "Configure"
         run: cmake --preset ${{ matrix.preset }} -DTUIDU_TESTING=OFF ${{ matrix.cmake_extra }}
 
