@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-#include <tui/Box.hpp>
-#include <tui/Canvas.hpp>
-#include <tui/Theme.hpp>
+#include <core/tui/Box.hpp>
+#include <core/tui/Canvas.hpp>
+#include <core/tui/Theme.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -49,12 +49,12 @@ void DeleteProgressDialog::setStatus(std::string status)
     _status = std::move(status);
 }
 
-tui::Size DeleteProgressDialog::preferredSize() const
+core::tui::Size DeleteProgressDialog::preferredSize() const
 {
-    return tui::Size { .width = Width, .height = Height };
+    return core::tui::Size { .width = Width, .height = Height };
 }
 
-void DeleteProgressDialog::render(tui::Canvas& canvas)
+void DeleteProgressDialog::render(core::tui::Canvas& canvas)
 {
     auto const& theme = canvas.theme();
     auto const boxStyle = theme.dialogBorder;
@@ -64,9 +64,9 @@ void DeleteProgressDialog::render(tui::Canvas& canvas)
     auto const statusStyle = theme.textNormal;
     auto const hintStyle = theme.textMuted;
 
-    auto const area = tui::Rect { .x = 0, .y = 0, .width = Width, .height = Height };
+    auto const area = core::tui::Rect { .x = 0, .y = 0, .width = Width, .height = Height };
     canvas.clear(theme.dialogBackground);
-    canvas.drawBox(area, tui::BorderStyle::Rounded, boxStyle, Title, tui::TitleAlign::Left);
+    canvas.drawBox(area, core::tui::BorderStyle::Rounded, boxStyle, Title, core::tui::TitleAlign::Left);
 
     auto const innerWidth = Width - (2 * Padding);
 
@@ -93,13 +93,13 @@ void DeleteProgressDialog::render(tui::Canvas& canvas)
     canvas.putString(4, Padding, "Esc to cancel", hintStyle);
 }
 
-tui::EventResult DeleteProgressDialog::onEvent(tui::InputEvent const& event)
+core::tui::EventResult DeleteProgressDialog::onEvent(core::tui::InputEvent const& event)
 {
     // Swallow key presses so they never reach the browser beneath; the App owns cancellation
     // (it interprets Esc directly while a delete is in flight).
-    if (std::holds_alternative<tui::KeyEvent>(event))
-        return tui::EventResult::Handled;
-    return tui::EventResult::Ignored;
+    if (std::holds_alternative<core::tui::KeyEvent>(event))
+        return core::tui::EventResult::Handled;
+    return core::tui::EventResult::Ignored;
 }
 
 } // namespace tuidu

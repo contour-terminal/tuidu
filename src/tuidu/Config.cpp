@@ -82,7 +82,7 @@ std::optional<std::filesystem::path> defaultConfigPath()
     return defaultConfigPath(systemEnv());
 }
 
-std::expected<bool, std::string> applyConfigFile(endo::platform::FileSystem const& fs,
+std::expected<bool, std::string> applyConfigFile(core::platform::FileSystem const& fs,
                                                  std::filesystem::path const& path,
                                                  AppConfig& config)
 {

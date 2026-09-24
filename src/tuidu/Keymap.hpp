@@ -4,8 +4,8 @@
 /// @file Keymap.hpp
 /// @brief Data-driven vim-style key bindings: one table drives dispatch and the help overlay.
 
-#include <tui/InputEvent.hpp>
-#include <tui/KeyBindings.hpp>
+#include <core/tui/InputEvent.hpp>
+#include <core/tui/KeyBindings.hpp>
 
 #include <array>
 #include <span>
@@ -22,7 +22,7 @@ namespace tuidu
 /// (e.g. arrow keys mirroring j/k) and is hidden from the help overlay.
 struct KeyBindingDef
 {
-    std::string_view chord; ///< Chord spec parsed by tui::KeyChord::parse (e.g. "shift+g").
+    std::string_view chord; ///< Chord spec parsed by core::tui::KeyChord::parse (e.g. "shift+g").
     Action action;          ///< Action this chord triggers.
     std::string_view help;  ///< Help text; empty marks an alias (excluded from help).
 };
@@ -83,13 +83,13 @@ class Keymap
     explicit Keymap(std::span<KeyBindingDef const> defs);
 
     /// Binds @p chordSpec to @p action, replacing any existing binding for that chord.
-    /// @param chordSpec A chord spec parseable by tui::KeyChord::parse.
+    /// @param chordSpec A chord spec parseable by core::tui::KeyChord::parse.
     /// @param action The action to trigger.
     /// @return true if the chord parsed and was bound.
     bool bind(std::string_view chordSpec, Action action);
 
     /// @return The action bound to @p event, or Action::None if unbound.
-    [[nodiscard]] Action lookup(tui::KeyEvent const& event) const noexcept;
+    [[nodiscard]] Action lookup(core::tui::KeyEvent const& event) const noexcept;
 
     /// @return The help-overlay rows (bindings with non-empty help), in table order.
     [[nodiscard]] std::vector<HelpEntry> helpEntries() const;
@@ -97,8 +97,8 @@ class Keymap
   private:
     void install(std::span<KeyBindingDef const> defs);
 
-    std::vector<std::pair<tui::KeyChord, Action>> _bindings; ///< Parsed chord → action table.
-    std::vector<HelpEntry> _help;                            ///< Help rows in declaration order.
+    std::vector<std::pair<core::tui::KeyChord, Action>> _bindings; ///< Parsed chord → action table.
+    std::vector<HelpEntry> _help;                                  ///< Help rows in declaration order.
 };
 
 } // namespace tuidu

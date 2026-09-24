@@ -23,7 +23,7 @@ void Keymap::install(std::span<KeyBindingDef const> defs)
     _bindings.reserve(defs.size());
     for (auto const& def: defs)
     {
-        if (auto const chord = tui::KeyChord::parse(def.chord); chord.has_value())
+        if (auto const chord = core::tui::KeyChord::parse(def.chord); chord.has_value())
             _bindings.emplace_back(*chord, def.action);
         if (!def.help.empty())
             _help.push_back(HelpEntry { .key = def.chord, .help = def.help });
@@ -32,7 +32,7 @@ void Keymap::install(std::span<KeyBindingDef const> defs)
 
 bool Keymap::bind(std::string_view chordSpec, Action action)
 {
-    auto const chord = tui::KeyChord::parse(chordSpec);
+    auto const chord = core::tui::KeyChord::parse(chordSpec);
     if (!chord.has_value())
         return false;
 
@@ -50,7 +50,7 @@ bool Keymap::bind(std::string_view chordSpec, Action action)
     return true;
 }
 
-Action Keymap::lookup(tui::KeyEvent const& event) const noexcept
+Action Keymap::lookup(core::tui::KeyEvent const& event) const noexcept
 {
     for (auto const& [chord, action]: _bindings)
         if (chord.matches(event))

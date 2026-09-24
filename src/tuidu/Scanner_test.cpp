@@ -1,23 +1,27 @@
 // SPDX-License-Identifier: Apache-2.0
+#include <core/async/Cancellation.hpp>
+#include <core/platform/testing/MockFileInfoProvider.hpp>
+
 #include <catch2/catch_test_macros.hpp>
 
 #include <string>
 #include <vector>
 
-#include <coro/Cancellation.hpp>
-#include <platform/testing/MockFileInfoProvider.hpp>
 #include <tuidu/Scanner.hpp>
 #include <tuidu/Tree.hpp>
 
 using namespace tuidu;
-using endo::platform::FileEntry;
-using endo::platform::testing::MockFileInfoProvider;
+using core::platform::FileEntry;
+using core::platform::testing::MockFileInfoProvider;
 
 namespace
 {
 /// Drives the scan task to completion synchronously (the scan only awaits sub-scans,
 /// so a single resume runs the whole walk). Optionally seeds a stop token.
-void runScan(Scanner& scanner, NodeId root, Scanner::ProgressSink sink = {}, endo::coro::StopToken token = {})
+void runScan(Scanner& scanner,
+             NodeId root,
+             Scanner::ProgressSink sink = {},
+             core::async::StopToken token = {})
 {
     auto task = scanner.scan(root, std::move(sink));
     task.handle().promise().setStopToken(std::move(token));
@@ -245,12 +249,12 @@ TEST_CASE("Scanner: cancellation throws OperationCancelled", "[scanner]")
     tree.at(root).dev = 1;
     Scanner scanner(provider, tree, ScanOptions {});
 
-    endo::coro::StopSource source;
+    core::async::StopSource source;
     source.request_stop(); // already cancelled before the first entry
 
     auto task = scanner.scan(root, {});
     task.handle().promise().setStopToken(source.get_token());
     task.handle().resume();
     // The body throws OperationCancelled; the root Task captures it and rethrows on result().
-    CHECK_THROWS_AS(task.result(), endo::coro::OperationCancelled);
+    CHECK_THROWS_AS(task.result(), core::async::OperationCancelled);
 }

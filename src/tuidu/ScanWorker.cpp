@@ -10,9 +10,9 @@
 namespace tuidu
 {
 
-ScanWorker::ScanWorker(endo::platform::FileInfoProvider const& provider,
+ScanWorker::ScanWorker(core::platform::FileInfoProvider const& provider,
                        Tree& tree,
-                       endo::platform::MessageQueue<ScanProgress>& progress,
+                       core::platform::MessageQueue<ScanProgress>& progress,
                        ScanOptions options,
                        std::mutex& treeMutex) noexcept:
     _provider(provider), _tree(tree), _progress(progress), _options(options), _treeMutex(treeMutex)
@@ -52,7 +52,7 @@ void ScanWorker::start(NodeId rootId)
             // The root Task captures any body exception and rethrows it here.
             task.result();
         }
-        catch (endo::coro::OperationCancelled const&)
+        catch (core::async::OperationCancelled const&)
         {
             // Cancelled mid-scan: emit a final done message so the UI stops the spinner.
             _progress.push(ScanProgress { .node = rootId, .currentPath = std::nullopt, .done = true });

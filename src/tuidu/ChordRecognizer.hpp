@@ -4,8 +4,8 @@
 /// @file ChordRecognizer.hpp
 /// @brief Recognizes two-key chord sequences (vim operators like `dd`) with a press timeout.
 
-#include <tui/InputEvent.hpp>
-#include <tui/KeyBindings.hpp>
+#include <core/tui/InputEvent.hpp>
+#include <core/tui/KeyBindings.hpp>
 
 #include <chrono>
 #include <cstdint>
@@ -57,7 +57,7 @@ class ChordRecognizer
     /// @param event The key event to interpret.
     /// @return Passthrough (handle normally), Pending (swallow; awaiting completion), or
     ///         Completed (with the resolved @ref Action).
-    [[nodiscard]] ChordResult feed(tui::KeyEvent const& event);
+    [[nodiscard]] ChordResult feed(core::tui::KeyEvent const& event);
 
     /// Drops any pending lead key (e.g. when focus changes or a modal opens).
     void reset() noexcept;
@@ -69,9 +69,9 @@ class ChordRecognizer
     /// A parsed sequence row: the two chords and the action they emit.
     struct Parsed
     {
-        tui::KeyChord first;  ///< Parsed lead chord.
-        tui::KeyChord second; ///< Parsed completing chord.
-        Action action;        ///< Action emitted on completion.
+        core::tui::KeyChord first;  ///< Parsed lead chord.
+        core::tui::KeyChord second; ///< Parsed completing chord.
+        Action action;              ///< Action emitted on completion.
     };
 
     std::vector<Parsed> _sequences;     ///< Parsed sequence table.

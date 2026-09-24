@@ -17,14 +17,14 @@ ChordRecognizer::ChordRecognizer(std::span<ChordSequenceDef const> sequences,
     _sequences.reserve(sequences.size());
     for (auto const& def: sequences)
     {
-        auto const first = tui::KeyChord::parse(def.first);
-        auto const second = tui::KeyChord::parse(def.second);
+        auto const first = core::tui::KeyChord::parse(def.first);
+        auto const second = core::tui::KeyChord::parse(def.second);
         if (first.has_value() && second.has_value())
             _sequences.push_back(Parsed { .first = *first, .second = *second, .action = def.action });
     }
 }
 
-ChordResult ChordRecognizer::feed(tui::KeyEvent const& event)
+ChordResult ChordRecognizer::feed(core::tui::KeyEvent const& event)
 {
     auto const now = _clock();
 

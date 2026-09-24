@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-#include <tui/InputEvent.hpp>
+#include <core/tui/InputEvent.hpp>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -16,11 +16,11 @@ namespace
 {
 
 /// Builds a KeyEvent for a printable character (no modifiers).
-tui::KeyEvent keyChar(char32_t c)
+core::tui::KeyEvent keyChar(char32_t c)
 {
-    return tui::KeyEvent { .key = tui::keyCodeFromCodepoint(c),
-                           .modifiers = tui::Modifier::None,
-                           .codepoint = c };
+    return core::tui::KeyEvent { .key = core::tui::keyCodeFromCodepoint(c),
+                                 .modifiers = core::tui::Modifier::None,
+                                 .codepoint = c };
 }
 
 /// A manually-advanced clock so the timeout is exercised deterministically (no real sleeps).

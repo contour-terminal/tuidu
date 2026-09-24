@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
+#include <core/platform/MessageQueue.hpp>
+#include <core/platform/testing/MockFileInfoProvider.hpp>
+
 #include <catch2/catch_test_macros.hpp>
 
 #include <chrono>
@@ -8,15 +11,13 @@
 #include <thread>
 #include <vector>
 
-#include <platform/MessageQueue.hpp>
-#include <platform/testing/MockFileInfoProvider.hpp>
 #include <tuidu/ScanWorker.hpp>
 #include <tuidu/Tree.hpp>
 
 using namespace tuidu;
-using endo::platform::FileEntry;
-using endo::platform::MessageQueue;
-using endo::platform::testing::MockFileInfoProvider;
+using core::platform::FileEntry;
+using core::platform::MessageQueue;
+using core::platform::testing::MockFileInfoProvider;
 
 namespace
 {
@@ -105,7 +106,7 @@ TEST_CASE("ScanWorker: a provider exception is reported, not fatal", "[scanworke
     // filename) must not let the exception escape the worker thread — that would call
     // std::terminate and kill the process with no diagnostic. The worker must instead emit a
     // final done message carrying the error text so the UI can surface it.
-    struct ThrowingProvider final: endo::platform::FileInfoProvider
+    struct ThrowingProvider final: core::platform::FileInfoProvider
     {
         [[nodiscard]] std::vector<FileEntry> listDirectory(std::string const& /*path*/) const override
         {

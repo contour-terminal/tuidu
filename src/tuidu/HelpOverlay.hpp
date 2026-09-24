@@ -4,8 +4,8 @@
 /// @file HelpOverlay.hpp
 /// @brief A modal help panel listing the active key bindings.
 
-#include <tui/Component.hpp>
-#include <tui/InputEvent.hpp>
+#include <core/tui/Component.hpp>
+#include <core/tui/InputEvent.hpp>
 
 #include <span>
 #include <vector>
@@ -22,7 +22,7 @@ namespace tuidu
 /// from the real bindings (alias rows, which have empty help, are excluded). Any key press
 /// dismisses it (reported via @ref onEvent returning Handled, which the host treats as
 /// "close").
-class HelpOverlay: public tui::Component
+class HelpOverlay: public core::tui::Component
 {
   public:
     /// @param keymap The keymap whose help entries to display (copied into rows).
@@ -31,13 +31,13 @@ class HelpOverlay: public tui::Component
     ///        @ref ChordSequences.
     explicit HelpOverlay(Keymap const& keymap, std::span<ChordSequenceDef const> sequences = ChordSequences);
 
-    void render(tui::Canvas& canvas) override;
-    [[nodiscard]] tui::EventResult onEvent(tui::InputEvent const& event) override;
+    void render(core::tui::Canvas& canvas) override;
+    [[nodiscard]] core::tui::EventResult onEvent(core::tui::InputEvent const& event) override;
 
     [[nodiscard]] bool focusable() const override { return true; }
 
     /// @return The preferred size (box sized to fit the entries).
-    [[nodiscard]] tui::Size preferredSize() const override;
+    [[nodiscard]] core::tui::Size preferredSize() const override;
 
   private:
     std::vector<HelpEntry> _entries; ///< The help rows (key + description).

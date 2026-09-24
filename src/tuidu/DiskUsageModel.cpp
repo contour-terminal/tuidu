@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-#include <tui/Theme.hpp>
+#include <core/tui/Theme.hpp>
 
 #include <tuidu/ColorRules.hpp>
 #include <tuidu/DiskUsageModel.hpp>
@@ -11,12 +11,15 @@ namespace tuidu
 namespace
 {
     /// Maps a generic TableColumn from a tuidu ColumnDef (layout-only translation).
-    [[nodiscard]] tui::TableColumn toTableColumn(ColumnDef const& col)
+    [[nodiscard]] core::tui::TableColumn toTableColumn(ColumnDef const& col)
     {
-        auto const width =
-            (col.widthPolicy == WidthPolicy::Flex) ? tui::ColumnWidth::Flex : tui::ColumnWidth::Fixed;
-        auto const align = (col.align == Align::Right) ? tui::ColumnAlign::Right : tui::ColumnAlign::Left;
-        return tui::TableColumn { .header = col.header, .width = width, .size = col.width, .align = align };
+        auto const width = (col.widthPolicy == WidthPolicy::Flex) ? core::tui::ColumnWidth::Flex
+                                                                  : core::tui::ColumnWidth::Fixed;
+        auto const align =
+            (col.align == Align::Right) ? core::tui::ColumnAlign::Right : core::tui::ColumnAlign::Left;
+        return core::tui::TableColumn {
+            .header = col.header, .width = width, .size = col.width, .align = align
+        };
     }
 } // namespace
 
@@ -35,23 +38,23 @@ RenderCtx DiskUsageModel::renderCtx(NodeId node) const
                        .barWidth = 0 };
 }
 
-std::vector<tui::TableColumn> DiskUsageModel::columns() const
+std::vector<core::tui::TableColumn> DiskUsageModel::columns() const
 {
-    std::vector<tui::TableColumn> out;
+    std::vector<core::tui::TableColumn> out;
     for (auto const& col: tuidu::columns())
         out.push_back(toTableColumn(col));
     return out;
 }
 
-std::vector<tui::RowId> DiskUsageModel::rows() const
+std::vector<core::tui::RowId> DiskUsageModel::rows() const
 {
-    std::vector<tui::RowId> out;
+    std::vector<core::tui::RowId> out;
     for (auto const id: _tree.childrenOf(_currentDir))
-        out.push_back(static_cast<tui::RowId>(id));
+        out.push_back(static_cast<core::tui::RowId>(id));
     return out;
 }
 
-std::string DiskUsageModel::cellText(tui::RowId row, std::size_t column) const
+std::string DiskUsageModel::cellText(core::tui::RowId row, std::size_t column) const
 {
     auto const cols = tuidu::columns();
     if (column >= cols.size())
@@ -61,7 +64,7 @@ std::string DiskUsageModel::cellText(tui::RowId row, std::size_t column) const
     return cols[column].format(ctx);
 }
 
-tui::RowStyle DiskUsageModel::rowStyle(tui::RowId row, bool selected) const
+core::tui::RowStyle DiskUsageModel::rowStyle(core::tui::RowId row, bool selected) const
 {
     auto const node = static_cast<NodeId>(row);
     auto const parent = _tree[node].parent;
@@ -74,21 +77,21 @@ tui::RowStyle DiskUsageModel::rowStyle(tui::RowId row, bool selected) const
                                     .percentOfParent = fraction,
                                     .largeThreshold = _largeThreshold,
                                     .hugeThreshold = _hugeThreshold };
-    auto const resolved = resolveColor(ctx, tui::currentTheme().colors);
+    auto const resolved = resolveColor(ctx, core::tui::currentTheme().colors);
 
-    auto style = tui::Style {};
+    auto style = core::tui::Style {};
     style.fg = resolved.color;
     style.bold = resolved.bold;
-    return tui::RowStyle { .style = style, .selected = selected };
+    return core::tui::RowStyle { .style = style, .selected = selected };
 }
 
-bool DiskUsageModel::canDescend(tui::RowId row) const
+bool DiskUsageModel::canDescend(core::tui::RowId row) const
 {
     auto const node = static_cast<NodeId>(row);
     return _tree[node].isDir() && _tree[node].childCount > 0;
 }
 
-bool DiskUsageModel::descend(tui::RowId row)
+bool DiskUsageModel::descend(core::tui::RowId row)
 {
     auto const node = static_cast<NodeId>(row);
     if (!canDescend(row))

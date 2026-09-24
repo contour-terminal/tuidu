@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-#include <tui/Theme.hpp>
+#include <core/tui/Theme.hpp>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -103,7 +103,7 @@ TEST_CASE("DiskUsageModel: descend and ascend change the current node", "[model]
     DiskUsageModel model(f.tree);
 
     auto const rows = model.rows();
-    auto const bigRow = static_cast<tui::RowId>(f.big);
+    auto const bigRow = static_cast<core::tui::RowId>(f.big);
     REQUIRE(model.canDescend(bigRow));
     REQUIRE(model.descend(bigRow));
     CHECK(model.currentDir() == f.big);
@@ -117,8 +117,8 @@ TEST_CASE("DiskUsageModel: cannot descend into a file", "[model]")
 {
     ModelFixture f;
     DiskUsageModel model(f.tree);
-    CHECK_FALSE(model.canDescend(static_cast<tui::RowId>(f.small)));
-    CHECK_FALSE(model.descend(static_cast<tui::RowId>(f.small)));
+    CHECK_FALSE(model.canDescend(static_cast<core::tui::RowId>(f.small)));
+    CHECK_FALSE(model.descend(static_cast<core::tui::RowId>(f.small)));
 }
 
 TEST_CASE("DiskUsageModel: sortBy reorders the rows", "[model]")
@@ -141,7 +141,7 @@ TEST_CASE("DiskUsageModel: size mode switches apparent vs disk in cell text", "[
     f.tree.at(f.small).aggBlocks = 4096; // distinct from aggSize 100
     DiskUsageModel model(f.tree);
 
-    auto const smallRow = static_cast<tui::RowId>(f.small);
+    auto const smallRow = static_cast<core::tui::RowId>(f.small);
     model.setSizeMode(SizeMode::Apparent);
     auto const apparent = model.cellText(smallRow, 0); // size column
     model.setSizeMode(SizeMode::Disk);
@@ -154,7 +154,7 @@ TEST_CASE("DiskUsageModel: currentTitle is the node's full path", "[model]")
     ModelFixture f;
     DiskUsageModel model(f.tree);
     CHECK(model.currentTitle() == "/r");
-    model.descend(static_cast<tui::RowId>(f.big));
+    model.descend(static_cast<core::tui::RowId>(f.big));
     CHECK(model.currentTitle() == "/r/big");
 }
 
@@ -162,7 +162,7 @@ TEST_CASE("DiskUsageModel: setColorThresholds re-classifies a row's color", "[mo
 {
     ModelFixture f;
     DiskUsageModel model(f.tree);
-    auto const smallRow = static_cast<tui::RowId>(f.small); // 100/300 ≈ 33% of parent
+    auto const smallRow = static_cast<core::tui::RowId>(f.small); // 100/300 ≈ 33% of parent
 
     // Default thresholds (large=0.20, huge=0.50): 33% is "large" (not bold).
     CHECK_FALSE(model.rowStyle(smallRow, false).style.bold);

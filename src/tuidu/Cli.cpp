@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-#include <crispy/CLI.h>
+#include <core/cli/CLI.hpp>
 
 #include <exception>
 #include <optional>
@@ -18,14 +18,12 @@
 namespace tuidu
 {
 
-namespace cli = crispy::cli;
-
 using namespace std::string_literals;
 using namespace std::string_view_literals;
 
 namespace
 {
-    /// The command name; also the prefix crispy uses for every parsed flag key ("tuidu.theme").
+    /// The command name; also the prefix core::cli uses for every parsed flag key ("tuidu.theme").
     constexpr std::string_view CommandName = "tuidu";
 
     /// Right margin (columns) used when rendering help/usage text.
@@ -38,60 +36,62 @@ namespace
     }
 
     /// Builds the data-driven command description: one row per option. Adding a flag is one entry.
-    [[nodiscard]] cli::command makeCommand()
+    [[nodiscard]] core::cli::Command makeCommand()
     {
-        return cli::command {
+        return core::cli::Command {
             .name = CommandName,
             .helpText = "tuidu — a TUI-first disk-usage analyzer (an ncdu with vim motions).",
             .options =
-                cli::option_list {
-                    cli::option { .name = "theme"sv,
-                                  .v = cli::value { ""s },
-                                  .helpText = "Color theme: auto, dark, light, or mono (default: auto)."sv,
-                                  .placeholder = "THEME"sv },
-                    cli::option { .name = "units"sv,
-                                  .v = cli::value { ""s },
-                                  .helpText = "Size units: binary (1024) or si (1000) (default: binary)."sv,
-                                  .placeholder = "SYSTEM"sv },
-                    cli::option { .name = "size-mode"sv,
-                                  .v = cli::value { ""s },
-                                  .helpText = "Size metric: apparent or disk (default: apparent)."sv,
-                                  .placeholder = "MODE"sv },
-                    cli::option {
+                core::cli::OptionList {
+                    core::cli::Option { .name = "theme"sv,
+                                        .v = core::cli::Value { ""s },
+                                        .helpText =
+                                            "Color theme: auto, dark, light, or mono (default: auto)."sv,
+                                        .placeholder = "THEME"sv },
+                    core::cli::Option { .name = "units"sv,
+                                        .v = core::cli::Value { ""s },
+                                        .helpText =
+                                            "Size units: binary (1024) or si (1000) (default: binary)."sv,
+                                        .placeholder = "SYSTEM"sv },
+                    core::cli::Option { .name = "size-mode"sv,
+                                        .v = core::cli::Value { ""s },
+                                        .helpText = "Size metric: apparent or disk (default: apparent)."sv,
+                                        .placeholder = "MODE"sv },
+                    core::cli::Option {
                         .name = "sort"sv,
-                        .v = cli::value { ""s },
+                        .v = core::cli::Value { ""s },
                         .helpText =
                             "Initial sort: size-desc, size-asc, name, items, date (default: size-desc)."sv,
                         .placeholder = "ORDER"sv },
-                    cli::option { .name = "config"sv,
-                                  .v = cli::value { ""s },
-                                  .helpText =
-                                      "Load configuration from this YAML file instead of the default."sv,
-                                  .placeholder = "PATH"sv },
-                    cli::option { .name = "cross-devices"sv,
-                                  .v = cli::value { false },
-                                  .helpText = "Cross filesystem boundaries while scanning."sv },
-                    cli::option { .name = "follow-symlinks"sv,
-                                  .v = cli::value { false },
-                                  .helpText = "Traverse into symlinked directories."sv },
-                    cli::option { .name = "no-dedupe-hardlinks"sv,
-                                  .v = cli::value { false },
-                                  .helpText =
-                                      "Count hardlinked files once per link instead of deduplicating."sv },
-                    cli::option { .name = "help"sv,
-                                  .v = cli::value { false },
-                                  .helpText = "Show this help and exit."sv },
-                    cli::option { .name = "version"sv,
-                                  .v = cli::value { false },
-                                  .helpText = "Show the version and exit."sv },
+                    core::cli::Option {
+                        .name = "config"sv,
+                        .v = core::cli::Value { ""s },
+                        .helpText = "Load configuration from this YAML file instead of the default."sv,
+                        .placeholder = "PATH"sv },
+                    core::cli::Option { .name = "cross-devices"sv,
+                                        .v = core::cli::Value { false },
+                                        .helpText = "Cross filesystem boundaries while scanning."sv },
+                    core::cli::Option { .name = "follow-symlinks"sv,
+                                        .v = core::cli::Value { false },
+                                        .helpText = "Traverse into symlinked directories."sv },
+                    core::cli::Option {
+                        .name = "no-dedupe-hardlinks"sv,
+                        .v = core::cli::Value { false },
+                        .helpText = "Count hardlinked files once per link instead of deduplicating."sv },
+                    core::cli::Option { .name = "help"sv,
+                                        .v = core::cli::Value { false },
+                                        .helpText = "Show this help and exit."sv },
+                    core::cli::Option { .name = "version"sv,
+                                        .v = core::cli::Value { false },
+                                        .helpText = "Show the version and exit."sv },
                 },
-            .verbatim = cli::verbatim { .placeholder = "PATH",
-                                        .helpText = "Directory to scan (default: current directory)." },
+            .verbatim = core::cli::Verbatim { .placeholder = "PATH",
+                                              .helpText = "Directory to scan (default: current directory)." },
         };
     }
 
     /// A non-empty string flag value, or @c std::nullopt when the flag was left at its default.
-    [[nodiscard]] std::optional<std::string> strOpt(cli::flag_store const& flags, std::string_view name)
+    [[nodiscard]] std::optional<std::string> strOpt(core::cli::FlagStore const& flags, std::string_view name)
     {
         auto const& value = flags.str(key(name));
         if (value.empty())
@@ -124,10 +124,10 @@ CliParse parseCommandLine(int argc, char const* const* argv)
 {
     auto const command = makeCommand();
 
-    std::optional<cli::flag_store> parsed;
+    std::optional<core::cli::FlagStore> parsed;
     try
     {
-        parsed = cli::parse(command, argc, argv);
+        parsed = core::cli::parse(command, argc, argv);
     }
     catch (std::exception const& e)
     {
@@ -151,11 +151,11 @@ CliParse parseCommandLine(int argc, char const* const* argv)
 
     if (flags.boolean(key("help")))
     {
-        std::print("{}", cli::helpText(command, cli::help_display_style {}, HelpMargin));
+        std::print("{}", core::cli::helpText(command, core::cli::HelpDisplayStyle {}, HelpMargin));
         return CliParse { .options = std::nullopt, .exitCode = 0 };
     }
 
-    // Unknown flags are not recognized as options, so crispy collects them as verbatim tokens.
+    // Unknown flags are not recognized as options, so core::cli collects them as verbatim tokens.
     // A verbatim token that looks like a flag is therefore a usage error; at most one remaining
     // token is the scan path.
     std::optional<std::string> rootPath;

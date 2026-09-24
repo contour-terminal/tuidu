@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-#include <tui/Theme.hpp>
+#include <core/tui/Theme.hpp>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -15,14 +15,14 @@ constexpr double Large = 0.20;
 constexpr double Huge = 0.50;
 
 /// Distinct palette so each slot is identifiable by color in assertions.
-[[nodiscard]] tui::ColorPalette markedPalette()
+[[nodiscard]] core::tui::ColorPalette markedPalette()
 {
-    tui::ColorPalette p {};
-    p.error = tui::RgbColor { .r = 1, .g = 0, .b = 0 };
-    p.warning = tui::RgbColor { .r = 2, .g = 0, .b = 0 };
-    p.accent = tui::RgbColor { .r = 3, .g = 0, .b = 0 };
-    p.primary = tui::RgbColor { .r = 4, .g = 0, .b = 0 };
-    p.text = tui::RgbColor { .r = 5, .g = 0, .b = 0 };
+    core::tui::ColorPalette p {};
+    p.error = core::tui::RgbColor { .r = 1, .g = 0, .b = 0 };
+    p.warning = core::tui::RgbColor { .r = 2, .g = 0, .b = 0 };
+    p.accent = core::tui::RgbColor { .r = 3, .g = 0, .b = 0 };
+    p.primary = core::tui::RgbColor { .r = 4, .g = 0, .b = 0 };
+    p.text = core::tui::RgbColor { .r = 5, .g = 0, .b = 0 };
     return p;
 }
 

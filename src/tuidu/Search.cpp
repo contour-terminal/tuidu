@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-#include <tui/completer/FuzzyMatch.hpp>
-#include <tui/completer/SmartCaseMatch.hpp>
+#include <core/tui/completer/FuzzyMatch.hpp>
+#include <core/tui/completer/SmartCaseMatch.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -30,7 +30,7 @@ namespace
     /// @return Byte offset of the match, or npos if @p query is not a substring.
     [[nodiscard]] std::size_t substringPosition(std::string_view name, std::string_view query)
     {
-        if (tui::SmartCaseMatch::hasUppercase(query))
+        if (core::tui::completer::SmartCaseMatch::hasUppercase(query))
             return name.find(query);
         return toLower(name).find(toLower(query));
     }
@@ -61,10 +61,10 @@ std::vector<ScoredNode> rankMatches(Tree const& tree,
             continue;
         }
 
-        auto const fuzzy = tui::FuzzyMatch::matchSmartCase(name, query);
+        auto const fuzzy = core::tui::completer::FuzzyMatch::matchSmartCase(name, query);
         if (fuzzy.matches)
         {
-            auto const score = tui::FuzzyMatch::calculateScore(0, name, query, fuzzy);
+            auto const score = core::tui::completer::FuzzyMatch::calculateScore(0, name, query, fuzzy);
             results.push_back(
                 ScoredNode { .node = id, .substring = false, .position = NoPos, .score = score });
         }

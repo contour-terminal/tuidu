@@ -4,8 +4,8 @@
 /// @file DeleteProgressDialog.hpp
 /// @brief A centered modal overlay showing the progress of a running delete.
 
-#include <tui/Component.hpp>
-#include <tui/InputEvent.hpp>
+#include <core/tui/Component.hpp>
+#include <core/tui/InputEvent.hpp>
 
 #include <string>
 
@@ -19,7 +19,7 @@ namespace tuidu
 /// / @ref setStatus from drained @ref DeleteProgress messages, and interprets the Esc key. The
 /// dialog swallows key events (so they never leak to the browser beneath) and never resolves an
 /// action itself.
-class DeleteProgressDialog: public tui::Component
+class DeleteProgressDialog: public core::tui::Component
 {
   public:
     DeleteProgressDialog();
@@ -39,12 +39,12 @@ class DeleteProgressDialog: public tui::Component
     /// @return The current progress fraction in [0, 1].
     [[nodiscard]] float progress() const noexcept { return _progress; }
 
-    void render(tui::Canvas& canvas) override;
-    [[nodiscard]] tui::EventResult onEvent(tui::InputEvent const& event) override;
+    void render(core::tui::Canvas& canvas) override;
+    [[nodiscard]] core::tui::EventResult onEvent(core::tui::InputEvent const& event) override;
 
     [[nodiscard]] bool focusable() const override { return true; }
 
-    [[nodiscard]] tui::Size preferredSize() const override;
+    [[nodiscard]] core::tui::Size preferredSize() const override;
 
   private:
     std::string _target;    ///< The item being deleted.
