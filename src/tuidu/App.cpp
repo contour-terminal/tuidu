@@ -221,9 +221,14 @@ void App::drainDeleteProgress()
     }
 
     if (failed)
+    {
         _statusBar.setLeftText(std::format("delete failed: {}", failure));
+    }
     else
+    {
+        std::scoped_lock const lock { _treeMutex };
         refreshStatus();
+    }
     _screen.invalidate();
     _dirty = true;
 }
@@ -296,7 +301,11 @@ bool App::dispatch(Action action)
 
 endo::coro::Task<void> App::mainFlow()
 {
-    refreshStatus();
+    {
+        // The scan worker is already growing the tree; refreshStatus() reads it.
+        std::scoped_lock const lock { _treeMutex };
+        refreshStatus();
+    }
     bool running = true;
     while (running)
     {

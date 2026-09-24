@@ -105,7 +105,8 @@ class App
     /// Folds queued scan-progress messages into the status bar and view.
     void applyProgress();
 
-    /// Updates the status bar text from the current tree/scan state.
+    /// Updates the status bar text from the current tree/scan state. It reads the tree, so the
+    /// caller holds @c _treeMutex: the scan worker may be growing it.
     void refreshStatus();
 
     /// Shows or hides the centered help overlay.
