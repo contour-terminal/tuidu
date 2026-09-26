@@ -5,7 +5,5 @@ build/
 target/
 
 compile_commands.json
-/contour/
-/src/crispy/
 __pycache__/
 *.egg-info/

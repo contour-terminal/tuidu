@@ -41,12 +41,9 @@ jobs:
         # enable_clang_tidy() looks for an unversioned `clang-tidy` on PATH.
         sudo ln -sf "$(command -v clang-tidy-21)" /usr/local/bin/clang-tidy
 
-    - name: Get vendored libraries (crispy)
-      run: python3 scripts/get_contour_dirs.py
-
     # A dedicated configuration with clang-tidy enabled on every first-party target.
     # The build itself is the gate: .clang-tidy sets WarningsAsErrors, so any finding
-    # (across src/tuidu plus the vendored tui/platform/coro) fails the job.
+    # in src/tuidu fails the job. core-cpp's targets are not tidied here; core-cpp gates itself.
     - name: Configure CMake (clang-tidy enabled)
       run: >
         cmake -B build/clang-tidy

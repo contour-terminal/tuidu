@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-#include <tui/Box.hpp>
-#include <tui/Canvas.hpp>
-#include <tui/Theme.hpp>
+#include <core/tui/Box.hpp>
+#include <core/tui/Canvas.hpp>
+#include <core/tui/Theme.hpp>
 
 #include <algorithm>
 #include <string>
@@ -36,14 +36,14 @@ HelpOverlay::HelpOverlay(Keymap const& keymap, std::span<ChordSequenceDef const>
     _width = std::max(content, static_cast<int>(Title.size())) + (2 * Padding);
 }
 
-tui::Size HelpOverlay::preferredSize() const
+core::tui::Size HelpOverlay::preferredSize() const
 {
     // Rows = entries + top/bottom border; the footer hint adds one more line.
     auto const height = static_cast<int>(_entries.size()) + 3;
-    return tui::Size { .width = _width + 2, .height = height + 1 };
+    return core::tui::Size { .width = _width + 2, .height = height + 1 };
 }
 
-void HelpOverlay::render(tui::Canvas& canvas)
+void HelpOverlay::render(core::tui::Canvas& canvas)
 {
     auto const& theme = canvas.theme();
     auto const boxStyle = theme.dialogBorder;
@@ -52,11 +52,11 @@ void HelpOverlay::render(tui::Canvas& canvas)
     auto const hintStyle = theme.textMuted;
 
     auto const height = static_cast<int>(_entries.size()) + 3;
-    auto const area = tui::Rect { .x = 0, .y = 0, .width = _width + 1, .height = height };
+    auto const area = core::tui::Rect { .x = 0, .y = 0, .width = _width + 1, .height = height };
 
     // Background + border with a title.
     canvas.clear(theme.dialogBackground);
-    canvas.drawBox(area, tui::BorderStyle::Rounded, boxStyle, Title, tui::TitleAlign::Left);
+    canvas.drawBox(area, core::tui::BorderStyle::Rounded, boxStyle, Title, core::tui::TitleAlign::Left);
 
     // One row per binding: "key   description".
     auto row = 1;
@@ -71,12 +71,12 @@ void HelpOverlay::render(tui::Canvas& canvas)
     canvas.putString(row, Padding, "press any key to close", hintStyle);
 }
 
-tui::EventResult HelpOverlay::onEvent(tui::InputEvent const& event)
+core::tui::EventResult HelpOverlay::onEvent(core::tui::InputEvent const& event)
 {
     // Any key press closes the overlay; the host hides it on Handled.
-    if (std::holds_alternative<tui::KeyEvent>(event))
-        return tui::EventResult::Handled;
-    return tui::EventResult::Ignored;
+    if (std::holds_alternative<core::tui::KeyEvent>(event))
+        return core::tui::EventResult::Handled;
+    return core::tui::EventResult::Ignored;
 }
 
 } // namespace tuidu

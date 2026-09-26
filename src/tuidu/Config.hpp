@@ -4,8 +4,10 @@
 /// @file Config.hpp
 /// @brief YAML configuration file: discovery (XDG / per-OS) and loading onto an @ref AppConfig.
 ///
-/// Loading goes through the injected @c endo::platform::FileSystem seam (so tests drive it with an
+/// Loading goes through the injected @c core::platform::FileSystem seam (so tests drive it with an
 /// @c InMemoryFileSystem), and yaml-cpp is confined to @c Config.cpp — it never appears in this header.
+
+#include <core/platform/FileSystem.hpp>
 
 #include <expected>
 #include <filesystem>
@@ -13,7 +15,6 @@
 #include <optional>
 #include <string>
 
-#include <platform/FileSystem.hpp>
 #include <tuidu/App.hpp>
 
 namespace tuidu
@@ -53,7 +54,7 @@ using EnvLookup = std::function<std::optional<std::string>(std::string_view name
 /// @param config The configuration to overlay onto (mutated only on success).
 /// @return @c true if a file was read and applied, @c false if no file was present, or an error
 ///         message if the file could not be read or parsed.
-[[nodiscard]] std::expected<bool, std::string> applyConfigFile(endo::platform::FileSystem const& fs,
+[[nodiscard]] std::expected<bool, std::string> applyConfigFile(core::platform::FileSystem const& fs,
                                                                std::filesystem::path const& path,
                                                                AppConfig& config);
 

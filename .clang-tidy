@@ -68,7 +68,7 @@ Checks: >-
 WarningsAsErrors: >-
   *
 UseColor: true
-HeaderFilterRegex: 'src/(tuidu|tui|platform|coro|testing)/[^.]'
+HeaderFilterRegex: 'src/tuidu/[^.]'
 FormatStyle:     none
 CheckOptions:
   - key:             bugprone-easily-swappable-parameters.MinimumLength

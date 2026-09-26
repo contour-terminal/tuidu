@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-#include <tui/InputEvent.hpp>
-#include <tui/KeyCode.hpp>
-#include <tui/Modifier.hpp>
+#include <core/tui/InputEvent.hpp>
+#include <core/tui/KeyCode.hpp>
+#include <core/tui/Modifier.hpp>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -15,15 +15,16 @@ using namespace tuidu;
 namespace
 {
 /// Builds a KeyEvent for a printable character.
-[[nodiscard]] tui::KeyEvent charKey(char c, tui::Modifier mod = tui::Modifier::None)
+[[nodiscard]] core::tui::KeyEvent charKey(char c, core::tui::Modifier mod = core::tui::Modifier::None)
 {
-    return tui::KeyEvent { .key = {}, .modifiers = mod, .codepoint = static_cast<char32_t>(c) };
+    return core::tui::KeyEvent { .key = {}, .modifiers = mod, .codepoint = static_cast<char32_t>(c) };
 }
 
 /// Builds a KeyEvent for a special key.
-[[nodiscard]] tui::KeyEvent specialKey(tui::KeyCode code, tui::Modifier mod = tui::Modifier::None)
+[[nodiscard]] core::tui::KeyEvent specialKey(core::tui::KeyCode code,
+                                             core::tui::Modifier mod = core::tui::Modifier::None)
 {
-    return tui::KeyEvent { .key = code, .modifiers = mod, .codepoint = 0 };
+    return core::tui::KeyEvent { .key = code, .modifiers = mod, .codepoint = 0 };
 }
 } // namespace
 
@@ -33,11 +34,12 @@ TEST_CASE("Keymap: every default binding dispatches to its action", "[keymap][ta
     Keymap const map;
     for (auto const& def: DefaultKeymap)
     {
-        auto const chord = tui::KeyChord::parse(def.chord);
+        auto const chord = core::tui::KeyChord::parse(def.chord);
         REQUIRE(chord.has_value());
         // Reconstruct a KeyEvent from the parsed chord and look it up.
-        auto const event =
-            tui::KeyEvent { .key = chord->key, .modifiers = chord->modifiers, .codepoint = chord->codepoint };
+        auto const event = core::tui::KeyEvent { .key = chord->key,
+                                                 .modifiers = chord->modifiers,
+                                                 .codepoint = chord->codepoint };
         INFO("chord: " << def.chord);
         CHECK(map.lookup(event) == def.action);
     }
@@ -50,7 +52,7 @@ TEST_CASE("Keymap: vim motion keys", "[keymap]")
     CHECK(map.lookup(charKey('k')) == Action::MoveUp);
     CHECK(map.lookup(charKey('g')) == Action::MoveTop);
     // A shifted letter arrives as the base (lowercase) codepoint plus the Shift modifier.
-    CHECK(map.lookup(charKey('g', tui::Modifier::Shift)) == Action::MoveBottom);
+    CHECK(map.lookup(charKey('g', core::tui::Modifier::Shift)) == Action::MoveBottom);
     CHECK(map.lookup(charKey('l')) == Action::Descend);
     CHECK(map.lookup(charKey('h')) == Action::Ascend);
     CHECK(map.lookup(charKey('q')) == Action::Quit);
@@ -60,8 +62,8 @@ TEST_CASE("Keymap: Ctrl-D / Ctrl-U half-page motions", "[keymap]")
 {
     Keymap const map;
     // A Ctrl+letter event arrives as the lowercase codepoint plus the Ctrl modifier.
-    CHECK(map.lookup(charKey('d', tui::Modifier::Ctrl)) == Action::HalfPageDown);
-    CHECK(map.lookup(charKey('u', tui::Modifier::Ctrl)) == Action::HalfPageUp);
+    CHECK(map.lookup(charKey('d', core::tui::Modifier::Ctrl)) == Action::HalfPageDown);
+    CHECK(map.lookup(charKey('u', core::tui::Modifier::Ctrl)) == Action::HalfPageUp);
     // Without Ctrl they are not half-page motions.
     CHECK(map.lookup(charKey('d')) == Action::None);
     CHECK(map.lookup(charKey('u')) == Action::None);
@@ -70,16 +72,16 @@ TEST_CASE("Keymap: Ctrl-D / Ctrl-U half-page motions", "[keymap]")
 TEST_CASE("Keymap: G jumps to bottom", "[keymap]")
 {
     Keymap const map;
-    CHECK(map.lookup(charKey('g', tui::Modifier::Shift)) == Action::MoveBottom);
+    CHECK(map.lookup(charKey('g', core::tui::Modifier::Shift)) == Action::MoveBottom);
 }
 
 TEST_CASE("Keymap: arrow-key aliases mirror j/k", "[keymap]")
 {
     Keymap const map;
-    CHECK(map.lookup(specialKey(tui::KeyCode::Down)) == Action::MoveDown);
-    CHECK(map.lookup(specialKey(tui::KeyCode::Up)) == Action::MoveUp);
-    CHECK(map.lookup(specialKey(tui::KeyCode::Enter)) == Action::Descend);
-    CHECK(map.lookup(specialKey(tui::KeyCode::Backspace)) == Action::Ascend);
+    CHECK(map.lookup(specialKey(core::tui::KeyCode::Down)) == Action::MoveDown);
+    CHECK(map.lookup(specialKey(core::tui::KeyCode::Up)) == Action::MoveUp);
+    CHECK(map.lookup(specialKey(core::tui::KeyCode::Enter)) == Action::Descend);
+    CHECK(map.lookup(specialKey(core::tui::KeyCode::Backspace)) == Action::Ascend);
 }
 
 TEST_CASE("Keymap: unbound key returns None", "[keymap]")

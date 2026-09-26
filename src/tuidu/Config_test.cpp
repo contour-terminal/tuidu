@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
+#include <core/platform/testing/InMemoryFileSystem.hpp>
+
 #include <catch2/catch_test_macros.hpp>
 
-#include <platform/testing/InMemoryFileSystem.hpp>
 #include <tuidu/Cli.hpp>
 #include <tuidu/Config.hpp>
 
 using namespace tuidu;
-using endo::platform::testing::InMemoryFileSystem;
+using core::platform::testing::InMemoryFileSystem;
 
 namespace
 {

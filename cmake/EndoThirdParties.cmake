@@ -4,10 +4,9 @@
 # and falls back to CPM if not found. When ENABLE_STATIC_LINKING is ON, dependencies
 # are built from source via CPM so static libraries are available.
 #
-# tuidu needs the subset required by the vendored coro/platform/tui chain:
-#   Catch2 (tests), Microsoft.GSL + boxed-cpp + reflection-cpp (crispy::core deps),
-#   libunicode (unicode::unicode), stb (stb_image), plus yaml-cpp for the configuration
-#   file. The remaining endo-only deps (nlohmann_json, CURL, mbedTLS, llama.cpp) are dropped.
+# tuidu needs: Catch2 (tests), core-cpp (the TUI, platform, coroutine and CLI layers), libunicode
+# (core::tui's, resolved here so ENABLE_STATIC_LINKING can insist on a static copy), and yaml-cpp
+# for the configuration file. core-cpp resolves its remaining dependency, stb, itself.
 
 set(CPM_VERSION "0.40.8")
 set(CPM_HASH_SUM "78ba32abdf798bc616bab7c73aac32a17bbd7b06ad9e26a6add69de8f3ae4791")
@@ -34,19 +33,16 @@ macro(EndoThirdPartiesSummary2)
     message(STATUS "    tuidu ThirdParties")
     message(STATUS "------------------------------------------------------------------------------")
     message(STATUS "Catch2              ${THIRDPARTY_BUILTIN_Catch2}")
-    message(STATUS "GSL                 ${THIRDPARTY_BUILTIN_GSL}")
     message(STATUS "libunicode          ${THIRDPARTY_BUILTIN_libunicode}")
-    message(STATUS "boxed-cpp           ${THIRDPARTY_BUILTIN_boxed_cpp}")
-    message(STATUS "reflection-cpp      ${THIRDPARTY_BUILTIN_reflection_cpp}")
-    message(STATUS "stb                 ${THIRDPARTY_BUILTIN_stb}")
     message(STATUS "yaml-cpp            ${THIRDPARTY_BUILTIN_yaml_cpp}")
+    message(STATUS "core-cpp            ${THIRDPARTY_BUILTIN_core_cpp}")
     message(STATUS "------------------------------------------------------------------------------")
 endmacro()
 
 # ==============================================================================
 # Catch2 v3 - Unit testing framework
 # ==============================================================================
-if(ENDO_TESTING)
+if(TUIDU_TESTING)
     find_package(Catch2 3 QUIET)
     if(TARGET Catch2::Catch2)
         set(THIRDPARTY_BUILTIN_Catch2 "system package")
@@ -69,47 +65,12 @@ if(ENDO_TESTING)
 endif()
 
 # ==============================================================================
-# Microsoft GSL - Guidelines Support Library (crispy::core dependency)
+# libunicode - Unicode library (unicode::unicode, used by core::tui)
 # ==============================================================================
-if(WIN32)
-    find_package(Microsoft.GSL CONFIG QUIET)
-else()
-    find_package(Microsoft.GSL QUIET)
-endif()
-if(TARGET Microsoft.GSL::GSL)
-    set(THIRDPARTY_BUILTIN_GSL "system package")
-else()
-    CPMAddPackage(
-        NAME GSL
-        VERSION 4.1.0
-        GITHUB_REPOSITORY microsoft/GSL
-        EXCLUDE_FROM_ALL YES
-        SYSTEM YES
-    )
-    set(THIRDPARTY_BUILTIN_GSL "CPM (v4.1.0)")
-endif()
-
-# ==============================================================================
-# boxed-cpp - Type-safe wrapper library (crispy::core dependency)
-# ==============================================================================
-find_package(boxed-cpp QUIET)
-if(TARGET boxed-cpp::boxed-cpp)
-    set(THIRDPARTY_BUILTIN_boxed_cpp "system package")
-else()
-    CPMAddPackage(
-        NAME boxed-cpp
-        GITHUB_REPOSITORY contour-terminal/boxed-cpp
-        GIT_TAG v1.4.3
-        EXCLUDE_FROM_ALL YES
-        SYSTEM YES
-    )
-    set(THIRDPARTY_BUILTIN_boxed_cpp "CPM (v1.4.3)")
-endif()
-
-# ==============================================================================
-# libunicode - Unicode library (unicode::unicode, used by tui + crispy)
-# ==============================================================================
-set(LIBUNICODE_REQUIRED_VERSION "0.9.0")
+# Resolved here rather than left to core-cpp, which would take a shared system copy even when
+# ENABLE_STATIC_LINKING asks for a static one. Keep this at or above the version core-cpp's
+# dependency table asks for (0.9.3).
+set(LIBUNICODE_REQUIRED_VERSION "0.9.3")
 if(NOT ENABLE_STATIC_LINKING)
     find_package(libunicode ${LIBUNICODE_REQUIRED_VERSION} QUIET)
 endif()
@@ -125,39 +86,14 @@ else()
             "LIBUNICODE_BENCHMARK OFF"
             "LIBUNICODE_TOOLS OFF"
             "LIBUNICODE_EXAMPLES OFF"
+            "PEDANTIC_COMPILER OFF"
+            "PEDANTIC_COMPILER_WERROR OFF"
             "BUILD_SHARED_LIBS OFF"
         EXCLUDE_FROM_ALL YES
         SYSTEM YES
     )
     set(THIRDPARTY_BUILTIN_libunicode "CPM (v${LIBUNICODE_REQUIRED_VERSION}, static)")
 endif()
-
-# ==============================================================================
-# stb - Single-header image libraries (stb_image, stb_image_resize2) for tui
-# ==============================================================================
-CPMAddPackage(
-    NAME stb
-    GITHUB_REPOSITORY nothings/stb
-    GIT_TAG master
-    DOWNLOAD_ONLY YES
-)
-if(stb_ADDED)
-    add_library(stb_image INTERFACE)
-    target_include_directories(stb_image SYSTEM INTERFACE "${stb_SOURCE_DIR}")
-endif()
-set(THIRDPARTY_BUILTIN_stb "CPM (master)")
-
-# ==============================================================================
-# reflection-cpp - Required by crispy::core
-# ==============================================================================
-CPMAddPackage(
-    NAME reflection-cpp
-    GITHUB_REPOSITORY contour-terminal/reflection-cpp
-    GIT_TAG v0.4.0
-    EXCLUDE_FROM_ALL YES
-    SYSTEM YES
-)
-set(THIRDPARTY_BUILTIN_reflection_cpp "CPM (v0.4.0)")
 
 # ==============================================================================
 # yaml-cpp - YAML parser for the tuidu configuration file
@@ -185,3 +121,23 @@ else()
     )
     set(THIRDPARTY_BUILTIN_yaml_cpp "CPM (v0.8.0)")
 endif()
+
+# ==============================================================================
+# core-cpp - the shared foundation of the Contour Terminal projects
+# ==============================================================================
+# core::tui, core::platform, core::async, core::net and core::cli, plus core::testing for the
+# tests. Declared last, so libunicode above is the parent's target core-cpp resolves its own
+# dependency from, and one copy is built. TLS stays off: tuidu has no network transport, so it
+# links no OpenSSL. CPM_core-cpp_SOURCE points it at a local checkout.
+CPMAddPackage(
+    NAME core-cpp
+    GITHUB_REPOSITORY contour-terminal/core-cpp
+    GIT_TAG v0.5.0
+    VERSION 0.5.0
+    EXCLUDE_FROM_ALL YES
+    SYSTEM YES
+    OPTIONS
+        "CORE_CPP_TESTING OFF"
+        "CORE_CPP_WITH_TLS OFF"
+)
+set(THIRDPARTY_BUILTIN_core_cpp "CPM (v0.5.0)")

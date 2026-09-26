@@ -4,13 +4,14 @@
 /// @file ScanWorker.hpp
 /// @brief Background thread that drives a Scanner and feeds progress to the UI.
 
+#include <core/async/Cancellation.hpp>
+#include <core/platform/FileInfoProvider.hpp>
+#include <core/platform/MessageQueue.hpp>
+
 #include <mutex>
 #include <string>
 #include <thread>
 
-#include <coro/Cancellation.hpp>
-#include <platform/FileInfoProvider.hpp>
-#include <platform/MessageQueue.hpp>
 #include <tuidu/ScanProgress.hpp>
 #include <tuidu/Tree.hpp>
 
@@ -34,9 +35,9 @@ class ScanWorker
     /// @param options Scan policy.
     /// @param treeMutex Mutex guarding @p tree; the worker locks it around each mutation so
     ///        a UI thread holding the same mutex reads a consistent tree (not owned).
-    ScanWorker(endo::platform::FileInfoProvider const& provider,
+    ScanWorker(core::platform::FileInfoProvider const& provider,
                Tree& tree,
-               endo::platform::MessageQueue<ScanProgress>& progress,
+               core::platform::MessageQueue<ScanProgress>& progress,
                ScanOptions options,
                std::mutex& treeMutex) noexcept;
 
@@ -59,12 +60,12 @@ class ScanWorker
     [[nodiscard]] bool running() const noexcept { return _thread.joinable(); }
 
   private:
-    endo::platform::FileInfoProvider const& _provider;     ///< Directory-listing seam.
+    core::platform::FileInfoProvider const& _provider;     ///< Directory-listing seam.
     Tree& _tree;                                           ///< Tree being populated.
-    endo::platform::MessageQueue<ScanProgress>& _progress; ///< Worker → UI channel.
+    core::platform::MessageQueue<ScanProgress>& _progress; ///< Worker → UI channel.
     ScanOptions _options;                                  ///< Scan policy.
     std::mutex& _treeMutex;                                ///< Guards @c _tree against UI reads.
-    endo::coro::StopSource _stop;                          ///< Cancels the scan.
+    core::async::StopSource _stop;                         ///< Cancels the scan.
     std::thread _thread;                                   ///< The worker thread.
 };
 

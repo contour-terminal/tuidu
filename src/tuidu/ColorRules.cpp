@@ -39,11 +39,11 @@ namespace
     }
 
     constexpr std::array<ColorRule, 5> ColorRules { {
-        { .match = &isReadError, .slot = &tui::ColorPalette::error, .bold = false },
-        { .match = &isHugeShare, .slot = &tui::ColorPalette::warning, .bold = true },
-        { .match = &isLargeShare, .slot = &tui::ColorPalette::accent, .bold = false },
-        { .match = &isDirectory, .slot = &tui::ColorPalette::primary, .bold = true },
-        { .match = &always, .slot = &tui::ColorPalette::text, .bold = false },
+        { .match = &isReadError, .slot = &core::tui::ColorPalette::error, .bold = false },
+        { .match = &isHugeShare, .slot = &core::tui::ColorPalette::warning, .bold = true },
+        { .match = &isLargeShare, .slot = &core::tui::ColorPalette::accent, .bold = false },
+        { .match = &isDirectory, .slot = &core::tui::ColorPalette::primary, .bold = true },
+        { .match = &always, .slot = &core::tui::ColorPalette::text, .bold = false },
     } };
 } // namespace
 
@@ -52,7 +52,7 @@ std::span<ColorRule const> colorRules() noexcept
     return ColorRules;
 }
 
-ResolvedColor resolveColor(ColorContext const& ctx, tui::ColorPalette const& palette)
+ResolvedColor resolveColor(ColorContext const& ctx, core::tui::ColorPalette const& palette)
 {
     for (auto const& rule: ColorRules)
         if (rule.match(ctx))

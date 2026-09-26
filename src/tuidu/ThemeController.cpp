@@ -31,33 +31,33 @@ ThemeController::ThemeController(ThemeMode mode) noexcept: _mode(mode)
 {
 }
 
-tui::Theme ThemeController::resolve(ThemeMode mode, tui::ColorScheme scheme)
+core::tui::Theme ThemeController::resolve(ThemeMode mode, core::tui::ColorScheme scheme)
 {
     switch (mode)
     {
-        case ThemeMode::Dark: return tui::darkTheme();
-        case ThemeMode::Light: return tui::lightTheme();
-        case ThemeMode::Mono: return tui::monoTheme();
+        case ThemeMode::Dark: return core::tui::darkTheme();
+        case ThemeMode::Light: return core::tui::lightTheme();
+        case ThemeMode::Mono: return core::tui::monoTheme();
         case ThemeMode::Auto: break;
     }
     // Auto: follow the terminal. Unknown defaults to dark (the conventional safe default).
-    return (scheme == tui::ColorScheme::Light) ? tui::lightTheme() : tui::darkTheme();
+    return (scheme == core::tui::ColorScheme::Light) ? core::tui::lightTheme() : core::tui::darkTheme();
 }
 
-void ThemeController::install(tui::Theme theme)
+void ThemeController::install(core::tui::Theme theme)
 {
     _current = theme;
     _hasCurrent = true;
-    tui::ThemeManager::instance().setCurrent(_current);
+    core::tui::ThemeManager::instance().setCurrent(_current);
 }
 
-tui::Theme ThemeController::applyForScheme(tui::ColorScheme scheme)
+core::tui::Theme ThemeController::applyForScheme(core::tui::ColorScheme scheme)
 {
     install(resolve(_mode, scheme));
     return _current;
 }
 
-bool ThemeController::onColorScheme(tui::ColorScheme scheme)
+bool ThemeController::onColorScheme(core::tui::ColorScheme scheme)
 {
     if (_mode != ThemeMode::Auto)
         return false; // pinned: ignore terminal changes
@@ -72,7 +72,7 @@ bool ThemeController::onColorScheme(tui::ColorScheme scheme)
     return true;
 }
 
-bool ThemeController::setMode(ThemeMode mode, tui::ColorScheme scheme)
+bool ThemeController::setMode(ThemeMode mode, core::tui::ColorScheme scheme)
 {
     _mode = mode;
     auto next = resolve(_mode, scheme);

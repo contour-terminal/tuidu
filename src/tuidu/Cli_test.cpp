@@ -89,6 +89,15 @@ TEST_CASE("Cli: an invalid enum value is a usage error", "[cli]")
     CHECK(parsed.exitCode == 2);
 }
 
+TEST_CASE("Cli: a value flag without its value is a usage error", "[cli]")
+{
+    // The parser reports this as a ParseError rather than an exception; it must still end in
+    // a usage error, not a crash or a silently empty option.
+    auto const parsed = run({ "--theme" });
+    CHECK_FALSE(parsed.options.has_value());
+    CHECK(parsed.exitCode == 2);
+}
+
 TEST_CASE("Cli: a surplus positional argument is a usage error", "[cli]")
 {
     auto const parsed = run({ "/a", "/b" });

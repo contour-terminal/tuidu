@@ -11,8 +11,8 @@
 namespace tuidu
 {
 
-DeleteWorker::DeleteWorker(endo::platform::FileSystem const& fs,
-                           endo::platform::MessageQueue<DeleteProgress>& progress,
+DeleteWorker::DeleteWorker(core::platform::FileSystem const& fs,
+                           core::platform::MessageQueue<DeleteProgress>& progress,
                            std::uint32_t progressEvery) noexcept:
     _fs(fs), _progress(progress), _progressEvery(progressEvery == 0 ? 1 : progressEvery)
 {
@@ -66,7 +66,7 @@ void DeleteWorker::run(std::stop_token const& stop,
     {
         // Enumerate the subtree (parents before contents). Pass an out-error so a partial
         // enumeration (e.g. a permission-denied subtree) aborts the destructive operation.
-        auto entries = std::vector<endo::platform::FileSystem::DirectoryEntry> {};
+        auto entries = std::vector<core::platform::FileSystem::DirectoryEntry> {};
         auto walkError = std::error_code {};
         for (auto const& entry: _fs.walkDirectoryRecursive(target, &walkError))
         {

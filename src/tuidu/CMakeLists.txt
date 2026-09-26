@@ -32,10 +32,10 @@ add_library(tuidu-core STATIC
 )
 
 target_include_directories(tuidu-core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
-target_link_libraries(tuidu-core PUBLIC tui endo-platform endo-coro)
-# yaml-cpp and crispy::cli back the config file and CLI parsing respectively; both are
+target_link_libraries(tuidu-core PUBLIC core::tui core::platform core::async core::net)
+# yaml-cpp and core::cli back the config file and CLI parsing respectively; both are
 # implementation details confined to Config.cpp / Cli.cpp, so keep them PRIVATE.
-target_link_libraries(tuidu-core PRIVATE yaml-cpp::yaml-cpp crispy::core)
+target_link_libraries(tuidu-core PRIVATE yaml-cpp::yaml-cpp core::cli)
 target_compile_definitions(tuidu-core PRIVATE TUIDU_VERSION="${TUIDU_VERSION_STRING}")
 target_compile_features(tuidu-core PUBLIC cxx_std_23)
 
@@ -60,7 +60,7 @@ enable_clang_tidy(tuidu)
 enable_static_linking(tuidu)
 
 # Tests
-if(ENDO_TESTING)
+if(TUIDU_TESTING)
     add_executable(test-tuidu
         test_main.cpp
         Tree_test.cpp
@@ -83,7 +83,7 @@ if(ENDO_TESTING)
         Config_test.cpp
         ConfigPaths_test.cpp
     )
-    target_link_libraries(test-tuidu PRIVATE tuidu-core Catch2::Catch2)
+    target_link_libraries(test-tuidu PRIVATE tuidu-core core::testing Catch2::Catch2)
     add_test(NAME test-tuidu COMMAND test-tuidu)
     enable_sanitizers(test-tuidu)
     enable_clang_tidy(test-tuidu)

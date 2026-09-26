@@ -4,12 +4,13 @@
 /// @file DeleteWorker.hpp
 /// @brief Background thread that recursively deletes a path and feeds progress to the UI.
 
+#include <core/platform/FileSystem.hpp>
+#include <core/platform/MessageQueue.hpp>
+
 #include <cstdint>
 #include <filesystem>
 #include <thread>
 
-#include <platform/FileSystem.hpp>
-#include <platform/MessageQueue.hpp>
 #include <tuidu/DeleteProgress.hpp>
 
 namespace tuidu
@@ -25,7 +26,7 @@ enum class DeleteMode : std::uint8_t
 /// Recursively deletes a filesystem path on a dedicated @c std::jthread so the blocking removal
 /// never stalls the UI thread.
 ///
-/// Deletion goes through an injected @ref endo::platform::FileSystem (so it is unit-testable with
+/// Deletion goes through an injected @ref core::platform::FileSystem (so it is unit-testable with
 /// @c InMemoryFileSystem) and reports progress through an injected
 /// @c MessageQueue<DeleteProgress> whose wakeup the UI's event source selects on — a push wakes
 /// the UI to update the progress dialog. Cancellation is cooperative via the jthread's stop token:
@@ -37,8 +38,8 @@ class DeleteWorker
     /// @param fs The filesystem seam used for removal (not owned; outlives the worker).
     /// @param progress The channel progress is pushed to (not owned).
     /// @param progressEvery Emit a progress message every N removed entries.
-    DeleteWorker(endo::platform::FileSystem const& fs,
-                 endo::platform::MessageQueue<DeleteProgress>& progress,
+    DeleteWorker(core::platform::FileSystem const& fs,
+                 core::platform::MessageQueue<DeleteProgress>& progress,
                  std::uint32_t progressEvery = 64) noexcept;
 
     DeleteWorker(DeleteWorker const&) = delete;
@@ -71,8 +72,8 @@ class DeleteWorker
              std::uint64_t total,
              DeleteMode mode);
 
-    endo::platform::FileSystem const& _fs;                   ///< Filesystem seam (removal).
-    endo::platform::MessageQueue<DeleteProgress>& _progress; ///< Worker → UI channel.
+    core::platform::FileSystem const& _fs;                   ///< Filesystem seam (removal).
+    core::platform::MessageQueue<DeleteProgress>& _progress; ///< Worker → UI channel.
     std::uint32_t _progressEvery;                            ///< Progress emission cadence.
     std::jthread _thread;                                    ///< The worker thread (auto-joins).
 };

@@ -16,7 +16,7 @@ namespace tuidu
 /// row here — the same row drives both recognition (@ref ChordRecognizer) and the help overlay.
 struct ChordSequenceDef
 {
-    std::string_view first;   ///< Lead key chord spec, parsed by tui::KeyChord::parse (e.g. "d").
+    std::string_view first;   ///< Lead key chord spec, parsed by core::tui::KeyChord::parse (e.g. "d").
     std::string_view second;  ///< Completing key chord spec (e.g. "d").
     Action action;            ///< Action emitted when the sequence completes within the timeout.
     std::string_view display; ///< How the chord is shown in help (e.g. "dd").

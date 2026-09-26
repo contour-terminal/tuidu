@@ -4,7 +4,7 @@
 /// @file ColorRules.hpp
 /// @brief Data-driven row coloring: first matching rule selects a theme palette slot.
 
-#include <tui/Theme.hpp>
+#include <core/tui/Theme.hpp>
 
 #include <array>
 #include <cstdint>
@@ -28,20 +28,20 @@ struct ColorContext
 };
 
 /// A coloring rule: a predicate plus the palette slot (and bold hint) to apply when it
-/// is the first matching rule. The slot is a pointer-to-member into @c tui::ColorPalette,
+/// is the first matching rule. The slot is a pointer-to-member into @c core::tui::ColorPalette,
 /// so switching themes recolors every row without touching the rules.
 struct ColorRule
 {
-    bool (*match)(ColorContext const&);      ///< Predicate over the row.
-    tui::RgbColor tui::ColorPalette::* slot; ///< Palette slot to use (pointer-to-member).
-    bool bold;                               ///< Whether to render bold.
+    bool (*match)(ColorContext const&);                  ///< Predicate over the row.
+    core::tui::RgbColor core::tui::ColorPalette::* slot; ///< Palette slot to use (pointer-to-member).
+    bool bold;                                           ///< Whether to render bold.
 };
 
 /// Result of resolving the color rules for a row.
 struct ResolvedColor
 {
-    tui::RgbColor color; ///< The concrete color, looked up from the active palette.
-    bool bold;           ///< Whether to render bold.
+    core::tui::RgbColor color; ///< The concrete color, looked up from the active palette.
+    bool bold;                 ///< Whether to render bold.
 };
 
 /// The coloring rules, evaluated top to bottom; first match wins. Adding a rule is one
@@ -52,6 +52,6 @@ struct ResolvedColor
 /// @param ctx The row inputs (node + thresholds).
 /// @param palette The active theme palette to resolve the slot against.
 /// @return The concrete color and bold flag from the first matching rule.
-[[nodiscard]] ResolvedColor resolveColor(ColorContext const& ctx, tui::ColorPalette const& palette);
+[[nodiscard]] ResolvedColor resolveColor(ColorContext const& ctx, core::tui::ColorPalette const& palette);
 
 } // namespace tuidu

@@ -103,15 +103,7 @@ if(WIN32)
 endif()
 
 
-# TUIDU_TESTING is the user-facing toggle. The vendored coro/platform/tui/crispy
-# sublibraries (copied from the endo project) still gate their test targets on the
-# internal ENDO_TESTING / CONTOUR_TESTING variables — we keep those names so the
-# vendored CMake applies unchanged (see the project's "core invariant"). Alias the
-# user toggle onto them. ENDO_TESTING must be set before include(EndoThirdParties):
-# the Catch2 fetch there is guarded by it.
 option(TUIDU_TESTING "Build unit tests [default: ON]" ON)
-set(ENDO_TESTING ${TUIDU_TESTING})
-set(CONTOUR_TESTING ${TUIDU_TESTING})
 
 if(TUIDU_TESTING)
     enable_testing()
@@ -124,6 +116,14 @@ include(PedanticCompiler)
 include(Sanitizers)
 include(ClangTidy)
 include(Coverage)
+
+# core-cpp instruments none of its targets as a subproject: a parent that sanitizes its own code
+# and not core-cpp's would mix instrumented and uninstrumented code, which is what makes TSan
+# report races that are not there. So tuidu applies its own sanitizers to every core-cpp target.
+get_property(_tuidu_core_cpp_targets GLOBAL PROPERTY CORE_CPP_TARGETS)
+foreach(_tuidu_core_cpp_target IN LISTS _tuidu_core_cpp_targets)
+    enable_sanitizers(${_tuidu_core_cpp_target})
+endforeach()
 
 check_static_system_requirements()
 

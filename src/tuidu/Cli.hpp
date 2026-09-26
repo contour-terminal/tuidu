@@ -4,9 +4,9 @@
 /// @file Cli.hpp
 /// @brief Command-line parsing for tuidu: flags, `--help`/`--version`, and the scan path.
 ///
-/// The parser is built on @c crispy::cli, but none of its types appear here: parsing yields
+/// The parser is built on @c core::cli, but none of its types appear here: parsing yields
 /// a plain @ref CliOptions overlay of "only what the user explicitly set", so it can be applied
-/// *after* the YAML config layer to win precedence. @c crispy and its variant-based @c flag_store
+/// *after* the YAML config layer to win precedence. @c core::cli and its variant-based @c FlagStore
 /// stay confined to @c Cli.cpp.
 
 #include <cstddef>

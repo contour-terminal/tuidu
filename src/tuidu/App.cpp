@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-#include <tui/InputEvent.hpp>
-#include <tui/KeyCode.hpp>
+#include <core/async/Cancellation.hpp>
+#include <core/tui/InputEvent.hpp>
+#include <core/tui/KeyCode.hpp>
 
 #include <algorithm>
 #include <format>
@@ -20,24 +21,45 @@ namespace
 {
     /// Builds the fullscreen screen configuration: a full-screen app on the alternate
     /// screen buffer (so the user's scrollback is preserved and restored on exit).
-    [[nodiscard]] tui::ScreenConfig makeScreenConfig()
+    [[nodiscard]] core::tui::ScreenConfig makeScreenConfig()
     {
-        tui::ScreenConfig config {};
-        config.viewport = tui::Viewport::Fullscreen;
+        core::tui::ScreenConfig config {};
+        config.viewport = core::tui::Viewport::Fullscreen;
         config.alternateScreen = true;
         return config;
     }
+
+    /// Tells @p runtime about every worker push signalled on @p wakeup.
+    ///
+    /// The scan and delete workers push progress from their own threads and signal @p wakeup; the
+    /// runtime learns of it through notifyAgentReady(), on its loop's thread. This flow is the
+    /// bridge: parked on the wakeup's handle, it resets the wakeup and notifies, for as long as the
+    /// loop runs. The loop owns it; ~EventLoop cancels it where it is parked.
+    /// @param runtime The runtime to notify (a pointer: a coroutine's reference parameter dangles).
+    /// @param wakeup The wakeup the workers signal (outlives the loop).
+    core::async::Task<void> relayWorkerWakeup(core::tui::runtime::TuiRuntime* runtime,
+                                              core::platform::Wakeup const* wakeup)
+    {
+        while (true)
+        {
+            co_await runtime->waitReadable(wakeup->nativeHandle());
+            wakeup->reset();
+            runtime->notifyAgentReady();
+        }
+    }
 } // namespace
 
-App::App(tui::Terminal& terminal,
-         tui::runtime::EventSource& eventSource,
-         endo::platform::FileInfoProvider const& provider,
-         endo::platform::FileSystem const& fileSystem,
-         endo::platform::MessageQueue<ScanProgress>& progress,
-         endo::platform::MessageQueue<DeleteProgress>& deleteProgress,
+App::App(core::net::EventLoop& loop,
+         core::tui::Terminal& terminal,
+         core::tui::runtime::InputSource& input,
+         core::platform::Wakeup const& workerWakeup,
+         core::platform::FileInfoProvider const& provider,
+         core::platform::FileSystem const& fileSystem,
+         core::platform::MessageQueue<ScanProgress>& progress,
+         core::platform::MessageQueue<DeleteProgress>& deleteProgress,
          AppConfig config):
     _terminal(terminal),
-    _eventSource(eventSource),
+    _workerWakeup(workerWakeup),
     _provider(provider),
     _fileSystem(fileSystem),
     _progress(progress),
@@ -46,9 +68,9 @@ App::App(tui::Terminal& terminal,
     _model(_tree),
     _theme(_config.themeMode),
     _screen(terminal, makeScreenConfig()),
-    _browser(_model, tui::TreeTableConfig { .showHeader = true, .barColumn = -1 }),
+    _browser(_model, core::tui::TreeTableConfig { .showHeader = true, .barColumn = -1 }),
     _help(_keymap),
-    _runtime(eventSource)
+    _runtime(loop, input)
 {
     _model.setSizeMode(_config.sizeMode);
     _model.setUnits(_config.units);
@@ -60,10 +82,12 @@ App::App(tui::Terminal& terminal,
     auto const cols = _screen.cols();
     _screen.root().addChild(
         _browser,
-        tui::LayoutParams { .area = tui::Rect { .x = 0, .y = 0, .width = cols, .height = rows - 1 } });
+        core::tui::LayoutParams {
+            .area = core::tui::Rect { .x = 0, .y = 0, .width = cols, .height = rows - 1 } });
     _screen.root().addChild(
         _statusBar,
-        tui::LayoutParams { .area = tui::Rect { .x = 0, .y = rows - 1, .width = cols, .height = 1 } });
+        core::tui::LayoutParams {
+            .area = core::tui::Rect { .x = 0, .y = rows - 1, .width = cols, .height = 1 } });
     _screen.setFocus(&_browser);
 }
 
@@ -100,8 +124,8 @@ void App::setHelpVisible(bool visible)
         auto const size = _help.preferredSize();
         auto const x = std::max(0, (_screen.cols() - size.width) / 2);
         auto const y = std::max(0, (_screen.rows() - size.height) / 2);
-        _help.setArea(tui::Rect { .x = x, .y = y, .width = size.width, .height = size.height });
-        _screen.showOverlay(_help, tui::Point { .x = x, .y = y });
+        _help.setArea(core::tui::Rect { .x = x, .y = y, .width = size.width, .height = size.height });
+        _screen.showOverlay(_help, core::tui::Point { .x = x, .y = y });
     }
     else
     {
@@ -118,8 +142,8 @@ void App::setDeleteDialogVisible(bool visible)
         auto const size = _deleteDialog.preferredSize();
         auto const x = std::max(0, (_screen.cols() - size.width) / 2);
         auto const y = std::max(0, (_screen.rows() - size.height) / 2);
-        _deleteDialog.setArea(tui::Rect { .x = x, .y = y, .width = size.width, .height = size.height });
-        _screen.showOverlay(_deleteDialog, tui::Point { .x = x, .y = y });
+        _deleteDialog.setArea(core::tui::Rect { .x = x, .y = y, .width = size.width, .height = size.height });
+        _screen.showOverlay(_deleteDialog, core::tui::Point { .x = x, .y = y });
     }
     else
     {
@@ -153,6 +177,7 @@ void App::beginDelete()
 
     _deletingNode = id;
     _deleteInFlight = true;
+    _deleteError.reset();
     _deleteDialog.setTarget(path);
     _deleteDialog.setProgress(0.0F);
     _deleteDialog.setStatus(std::format("Deleting 0 / {}", total));
@@ -186,8 +211,6 @@ void App::drainDeleteProgress()
         return;
 
     auto finished = false;
-    auto failed = false;
-    std::string failure;
     for (auto const& p: batch)
     {
         auto const fraction =
@@ -199,8 +222,7 @@ void App::drainDeleteProgress()
             finished = true;
             if (p.error.has_value())
             {
-                failed = true;
-                failure = *p.error;
+                _deleteError = p.error;
             }
             else if (!p.cancelled)
             {
@@ -220,10 +242,15 @@ void App::drainDeleteProgress()
         setDeleteDialogVisible(false);
     }
 
-    if (failed)
-        _statusBar.setLeftText(std::format("delete failed: {}", failure));
+    if (_deleteError)
+    {
+        _statusBar.setLeftText(std::format("delete failed: {}", *_deleteError));
+    }
     else
+    {
+        std::scoped_lock const lock { _treeMutex };
         refreshStatus();
+    }
     _screen.invalidate();
     _dirty = true;
 }
@@ -294,9 +321,13 @@ bool App::dispatch(Action action)
     return true;
 }
 
-endo::coro::Task<void> App::mainFlow()
+core::async::Task<void> App::mainFlow()
 {
-    refreshStatus();
+    {
+        // The scan worker is already growing the tree; refreshStatus() reads it.
+        std::scoped_lock const lock { _treeMutex };
+        refreshStatus();
+    }
     bool running = true;
     while (running)
     {
@@ -319,26 +350,40 @@ endo::coro::Task<void> App::mainFlow()
         // while a scan streams progress, and idle on a long interval otherwise — input and
         // scan wakeups interrupt the wait immediately regardless of the timeout.
         auto const pollMs = std::chrono::milliseconds { _scanInFlight ? ScanPollMs : IdlePollMs };
-        auto activity = co_await _runtime.nextActivity(pollMs);
+        auto activity = core::tui::runtime::Activity {};
+        try
+        {
+            activity = co_await _runtime.nextActivity(pollMs);
+        }
+        catch (core::async::OperationCancelled const&)
+        {
+            // The terminal's input has ended (it hung up): nothing more can be typed, and every
+            // further wait would be cancelled at once. Quit rather than spin on it.
+            if (!_runtime.inputClosed())
+                throw;
+            running = false;
+            continue;
+        }
 
         switch (activity.kind)
         {
-            case tui::runtime::ActivityKind::AgentReady: continue; // scan progress pending; drain at the top
-            case tui::runtime::ActivityKind::Timeout: continue;    // idle tick; nothing to do
-            case tui::runtime::ActivityKind::Event: break;
+            case core::tui::runtime::ActivityKind::AgentReady:
+                continue; // scan progress pending; drain at the top
+            case core::tui::runtime::ActivityKind::Timeout: continue; // idle tick; nothing to do
+            case core::tui::runtime::ActivityKind::Event: break;
         }
 
         if (!activity.event)
             continue;
         auto const& event = *activity.event;
 
-        if (auto const* key = std::get_if<tui::KeyEvent>(&event))
+        if (auto const* key = std::get_if<core::tui::KeyEvent>(&event))
         {
             // While a delete runs, Esc cancels it; every other key is swallowed so the browser
             // beneath stays inert until the delete finishes.
             if (_deleteInFlight)
             {
-                if (key->key == tui::KeyCode::Escape && _deleteWorker.has_value())
+                if (key->key == core::tui::KeyCode::Escape && _deleteWorker.has_value())
                     _deleteWorker->requestStop();
                 continue;
             }
@@ -367,12 +412,13 @@ endo::coro::Task<void> App::mainFlow()
                 }
             }
         }
-        else if (auto const* scheme = std::get_if<tui::ColorSchemeReport>(&event))
+        else if (auto const* scheme = std::get_if<core::tui::ColorSchemeReport>(&event))
         {
-            auto const cs = (scheme->mode == 2) ? tui::ColorScheme::Light : tui::ColorScheme::Dark;
+            auto const cs =
+                (scheme->mode == 2) ? core::tui::ColorScheme::Light : core::tui::ColorScheme::Dark;
             if (_theme.onColorScheme(cs))
             {
-                _screen.setTheme(tui::currentTheme());
+                _screen.setTheme(core::tui::currentTheme());
                 _screen.invalidate();
                 _dirty = true;
             }
@@ -382,7 +428,7 @@ endo::coro::Task<void> App::mainFlow()
             // Mouse events drive the browser (click to select, double-click to descend, wheel to
             // scroll). While a modal overlay is up, swallow them so a click cannot reach the
             // browser beneath; resize/focus still apply.
-            if (std::holds_alternative<tui::MouseEvent>(event) && (_deleteInFlight || _helpVisible))
+            if (std::holds_alternative<core::tui::MouseEvent>(event) && (_deleteInFlight || _helpVisible))
                 continue;
 
             // Resize / mouse / focus: let the component tree handle it and redraw. The browser
@@ -401,7 +447,7 @@ int App::run()
 {
     // Pick the initial theme from the terminal's reported scheme before the first draw.
     (void) _theme.applyForScheme(_terminal.colorScheme());
-    _screen.setTheme(tui::currentTheme());
+    _screen.setTheme(core::tui::currentTheme());
 
     // Build the root node and point the model at it (the model was constructed over an
     // empty tree, so its current directory is only valid now), then kick off the scan.
@@ -412,7 +458,7 @@ int App::run()
     _scanInFlight = true;
     worker.start(_tree.root());
 
-    _runtime.setInterruptHandler([this] { _runtime.rootStopSource().request_stop(); });
+    _runtime.spawn(relayWorkerWakeup(&_runtime, &_workerWakeup));
     _runtime.blockOn(mainFlow());
 
     worker.requestStop();

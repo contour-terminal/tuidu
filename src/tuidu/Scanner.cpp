@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
+#include <core/async/Cancellation.hpp>
+
 #include <string>
 #include <utility>
 #include <vector>
 
-#include <coro/Cancellation.hpp>
 #include <tuidu/Scanner.hpp>
 
 namespace tuidu
@@ -19,7 +20,7 @@ namespace
     }
 } // namespace
 
-Scanner::Scanner(endo::platform::FileInfoProvider const& provider,
+Scanner::Scanner(core::platform::FileInfoProvider const& provider,
                  Tree& tree,
                  ScanOptions options,
                  std::mutex* treeMutex) noexcept:
@@ -48,7 +49,7 @@ void Scanner::maybeEmit(ProgressSink const& sink, NodeId node, bool force, bool 
     sink(progress);
 }
 
-endo::coro::Task<void> Scanner::scan(NodeId dirId, ProgressSink sink)
+core::async::Task<void> Scanner::scan(NodeId dirId, ProgressSink sink)
 {
     {
         auto guard = lockTree();
@@ -59,7 +60,7 @@ endo::coro::Task<void> Scanner::scan(NodeId dirId, ProgressSink sink)
     co_return;
 }
 
-endo::coro::Task<void> Scanner::scanDir(NodeId dirId, ProgressSink sink)
+core::async::Task<void> Scanner::scanDir(NodeId dirId, ProgressSink sink)
 {
     // Reading the directory is I/O — done without the tree lock so the UI thread is never
     // blocked on a slow readdir/lstat.
@@ -71,8 +72,8 @@ endo::coro::Task<void> Scanner::scanDir(NodeId dirId, ProgressSink sink)
     auto const entries = _provider.listDirectory(path);
 
     // Cooperative cancellation: bail before mutating if a stop was requested.
-    if (auto const token = co_await endo::coro::thisCoroStopToken(); token.stop_requested())
-        throw endo::coro::OperationCancelled {};
+    if (auto const token = co_await core::async::thisCoroStopToken(); token.stop_requested())
+        throw core::async::OperationCancelled {};
 
     // Phase 1: add ALL of this directory's children first, contiguously, so the Tree's
     // [firstChild, firstChild + childCount) invariant holds. (Recursing per-entry would

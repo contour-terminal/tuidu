@@ -18,7 +18,7 @@ in C++23. An [ncdu](https://dev.yorhel.nl/ncdu) competitor.
 
 ## Building
 
-Requires a C++23 compiler (Clang ≥ 17 / GCC ≥ 13), CMake ≥ 3.30, Ninja, Python 3, and git.
+Requires a C++23 compiler (Clang ≥ 17 / GCC ≥ 13), CMake ≥ 3.30, Ninja, and git.
 
 ```bash
 # On macOS, use Homebrew LLVM:
@@ -29,8 +29,10 @@ cmake --build --preset clang-debug
 ctest --preset clang-debug
 ```
 
-The first configure fetches the vendored `crispy` utility library from contour-terminal (needs
-network).
+The first configure fetches [core-cpp](https://github.com/contour-terminal/core-cpp), which
+provides the TUI, platform, coroutine and CLI layers, and its dependencies through CPM (needs
+network). To build against a local core-cpp checkout instead, configure with
+`-DCPM_core-cpp_SOURCE=/path/to/core-cpp`.
 
 ## Usage
 
@@ -44,7 +46,7 @@ Press `?` for help, `q` to quit.
 
 See [AGENT.md](AGENT.md). In short: an injectable `FileInfoProvider` feeds a coroutine `Scanner`
 that builds a flat-arena `Tree`; a background `ScanWorker` streams progress to a `TuiRuntime`
-main loop; a `DiskUsageModel` adapts the tree to the generic, reusable `tui::TreeTableView` browser.
+main loop; a `DiskUsageModel` adapts the tree to the generic, reusable `core::tui::TreeTableView` browser.
 Every OS touch is behind a dependency-injected interface; every behavioral axis (keys, columns,
 sorts, units, colors) is a data table.
 

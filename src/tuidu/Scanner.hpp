@@ -4,13 +4,14 @@
 /// @file Scanner.hpp
 /// @brief Coroutine-first recursive directory walker that aggregates disk usage.
 
+#include <core/async/Task.hpp>
+#include <core/platform/FileInfoProvider.hpp>
+
 #include <cstdint>
 #include <functional>
 #include <mutex>
 #include <unordered_set>
 
-#include <coro/Task.hpp>
-#include <platform/FileInfoProvider.hpp>
 #include <tuidu/ScanProgress.hpp>
 #include <tuidu/Tree.hpp>
 
@@ -21,11 +22,11 @@ namespace tuidu
 /// a @ref Tree and aggregating subtree sizes/blocks/item-counts.
 ///
 /// Dependency-injected: it touches the filesystem only through the abstract
-/// @c endo::platform::FileInfoProvider, so production injects a real provider and tests
-/// inject a mock. The walk is a coroutine (@c endo::coro::Task) — `scan` `co_await`s a
+/// @c core::platform::FileInfoProvider, so production injects a real provider and tests
+/// inject a mock. The walk is a coroutine (@c core::async::Task) — `scan` `co_await`s a
 /// recursive `scanDir` per subdirectory and bubbles aggregates up on return.
 /// Cancellation is cooperative: the inherited @c StopToken is checked between entries,
-/// and a requested stop throws @c endo::coro::OperationCancelled to unwind cleanly.
+/// and a requested stop throws @c core::async::OperationCancelled to unwind cleanly.
 class Scanner
 {
   public:
@@ -38,7 +39,7 @@ class Scanner
     /// @param treeMutex Optional mutex guarding @p tree against concurrent UI reads. When
     ///        set, the scanner locks it around each tree mutation so a UI thread holding
     ///        the same mutex sees a consistent tree. Null for single-threaded use.
-    Scanner(endo::platform::FileInfoProvider const& provider,
+    Scanner(core::platform::FileInfoProvider const& provider,
             Tree& tree,
             ScanOptions options,
             std::mutex* treeMutex = nullptr) noexcept;
@@ -47,13 +48,13 @@ class Scanner
     /// @param dirId The directory node to scan (typically @c tree.root()).
     /// @param sink Receives periodic progress and a final done message.
     /// @return A task that completes when the subtree is fully scanned (or cancelled).
-    [[nodiscard]] endo::coro::Task<void> scan(NodeId dirId, ProgressSink sink);
+    [[nodiscard]] core::async::Task<void> scan(NodeId dirId, ProgressSink sink);
 
   private:
     /// Recursively scans @p dirId, populating children and folding their aggregates up.
     /// @param dirId The directory node to scan.
     /// @param sink Progress sink (taken by value — coroutine parameters must not be refs).
-    [[nodiscard]] endo::coro::Task<void> scanDir(NodeId dirId, ProgressSink sink);
+    [[nodiscard]] core::async::Task<void> scanDir(NodeId dirId, ProgressSink sink);
 
     /// Emits a progress message if the cadence threshold has been reached, or if forced.
     void maybeEmit(ProgressSink const& sink, NodeId node, bool force, bool done);
@@ -65,7 +66,7 @@ class Scanner
         return _treeMutex ? std::unique_lock<std::mutex> { *_treeMutex } : std::unique_lock<std::mutex> {};
     }
 
-    endo::platform::FileInfoProvider const& _provider; ///< Directory-listing seam.
+    core::platform::FileInfoProvider const& _provider; ///< Directory-listing seam.
     Tree& _tree;                                       ///< Tree being populated.
     ScanOptions _options;                              ///< Scan policy.
     std::mutex* _treeMutex;                            ///< Optional guard for @c _tree (may be null).
