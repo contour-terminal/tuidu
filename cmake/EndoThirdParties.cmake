@@ -132,12 +132,12 @@ endif()
 CPMAddPackage(
     NAME core-cpp
     GITHUB_REPOSITORY contour-terminal/core-cpp
-    GIT_TAG v0.4.3
-    VERSION 0.4.3
+    GIT_TAG v0.5.0
+    VERSION 0.5.0
     EXCLUDE_FROM_ALL YES
     SYSTEM YES
     OPTIONS
         "CORE_CPP_TESTING OFF"
         "CORE_CPP_WITH_TLS OFF"
 )
-set(THIRDPARTY_BUILTIN_core_cpp "CPM (v0.4.3)")
+set(THIRDPARTY_BUILTIN_core_cpp "CPM (v0.5.0)")

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 #include <core/cli/CLI.hpp>
 
-#include <exception>
 #include <optional>
 #include <print>
 #include <string>
@@ -124,20 +123,10 @@ CliParse parseCommandLine(int argc, char const* const* argv)
 {
     auto const command = makeCommand();
 
-    std::optional<core::cli::FlagStore> parsed;
-    try
-    {
-        parsed = core::cli::parse(command, argc, argv);
-    }
-    catch (std::exception const& e)
-    {
-        std::println(stderr, "tuidu: {}", e.what());
-        return CliParse { .options = std::nullopt, .exitCode = 2 };
-    }
-
+    auto const parsed = core::cli::parse(command, argc, argv);
     if (!parsed)
     {
-        std::println(stderr, "tuidu: failed to parse command line. Try --help.");
+        std::println(stderr, "tuidu: {}", parsed.error().message);
         return CliParse { .options = std::nullopt, .exitCode = 2 };
     }
 
